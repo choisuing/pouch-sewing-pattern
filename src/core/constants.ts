@@ -44,6 +44,6 @@ export interface Preset {
 
 export const PRESETS: readonly Preset[] = [
   { id: 'cosmetic', label: '화장품 파우치', widthMm: 150, heightMm: 90, depthMm: 50 },
-  { id: 'sanitary', label: '생리대 파우치', widthMm: 120, heightMm: 70, depthMm: 70 },
+  { id: 'sanitary', label: '생리대 파우치', widthMm: 120, heightMm: 70, depthMm: 40 },
   { id: 'pencil', label: '필통', widthMm: 200, heightMm: 50, depthMm: 50 },
 ];

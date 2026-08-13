@@ -36,7 +36,7 @@ describe('DIMENSION_ORDER', () => {
 describe('formatPresetLabel', () => {
   it('확정한 순서대로 치수를 적는다', () => {
     expect(formatPresetLabel(PRESETS[0]!)).toBe('화장품 파우치 150×90×50');
-    expect(formatPresetLabel(PRESETS[1]!)).toBe('생리대 파우치 120×70×70');
+    expect(formatPresetLabel(PRESETS[1]!)).toBe('생리대 파우치 120×70×40');
     expect(formatPresetLabel(PRESETS[2]!)).toBe('필통 200×50×50');
   });
 

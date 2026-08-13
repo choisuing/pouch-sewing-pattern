@@ -49,7 +49,7 @@ describe('PRESETS', () => {
   it('요청받은 세 가지 프리셋을 제공한다', () => {
     expect(PRESETS.map((p) => [p.label, p.widthMm, p.heightMm, p.depthMm])).toEqual([
       ['화장품 파우치', 150, 90, 50],
-      ['생리대 파우치', 120, 70, 70],
+      ['생리대 파우치', 120, 70, 40],
       ['필통', 200, 50, 50],
     ]);
   });
