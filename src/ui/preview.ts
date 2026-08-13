@@ -1,7 +1,7 @@
 import type { Layout } from '../core/layout';
 import type { Pagination } from '../core/tiling';
 
-function escapeXml(value: string): string {
+export function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
