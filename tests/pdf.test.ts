@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { buildLayout } from '../src/core/layout';
 import { paginate, PAGE_MARGIN_MM, type Page, type Pagination } from '../src/core/tiling';
-import { MM_TO_PT, buildPdf, toFramePoint, toPagePoint } from '../src/core/pdf';
+import { MM_TO_PT, buildPdf, guidePageLines, toFramePoint, toPagePoint } from '../src/core/pdf';
 import type { Dimensions } from '../src/core/dimensions';
 
 const travel: Dimensions = { widthMm: 270, depthMm: 100, heightMm: 140 };
@@ -65,5 +65,32 @@ describe('toFramePoint / toPagePoint 좌표 변환', () => {
     const p = toPagePoint(a4Portrait, firstTile, 0, 0);
     expect(p.x).toBeCloseTo(PAGE_MARGIN_MM * MM_TO_PT, 9);
     expect(p.y).toBeCloseTo((297 - PAGE_MARGIN_MM) * MM_TO_PT, 9);
+  });
+});
+
+describe('buildPdf — 완성선', () => {
+  it('완성선을 실제로 그린다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const withSeam = await buildPdf(layout, pagination);
+    const withoutSeam = await buildPdf({ ...layout, seamLineMm: [] }, pagination);
+    expect(withSeam.length).toBeGreaterThan(withoutSeam.length);
+  });
+
+  it('완성선이 없어도 페이지 구성은 그대로다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const doc = await PDFDocument.load(await buildPdf({ ...layout, seamLineMm: [] }, pagination));
+    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
+  });
+
+  it('안내 페이지 문구에 완성선 설명을 넣는다', () => {
+    const lines = guidePageLines(layout, paginate(layout, 'a4'));
+    expect(lines.join('\n')).toContain('stitch line');
+  });
+
+  it('안내 문구를 표준 폰트가 인코딩할 수 있는 문자로만 쓴다', () => {
+    // pdf-lib 표준 폰트는 WinAnsi 밖의 글자를 인코딩하지 못한다.
+    for (const line of guidePageLines(layout, paginate(layout, 'a4'))) {
+      expect(line).toMatch(/^[\x20-\x7e]*$/);
+    }
   });
 });

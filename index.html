@@ -21,11 +21,15 @@
         <p class="error" id="error" hidden></p>
 
         <h2 class="label">미리보기</h2>
+        <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
         <div class="preview" id="preview"></div>
-        <p class="note">
-          점선은 접히는 자리이고, 옅은 사각형은 인쇄 페이지 경계입니다.
-          시접 10mm가 이미 포함되어 있어 그대로 재단하면 됩니다.
-        </p>
+        <ul class="legend">
+          <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
+          <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
+          <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
+          <li><span class="swatch swatch-fold"></span>접힘선 — 접어서 옆면·바닥을 만듭니다</li>
+          <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
+        </ul>
 
         <h2 class="label">용지</h2>
         <div class="papers" id="papers"></div>

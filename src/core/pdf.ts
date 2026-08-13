@@ -2,6 +2,7 @@
 // drawText가 "WinAnsi cannot encode" 오류를 던지고, 한글 폰트를 번들하면
 // 외부 의존 0 원칙과 산출물 크기에 어긋난다. 한국어 안내는 화면(UI)에서 제공한다.
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { SEAM_MM } from './constants';
 import type { Layout, Line, Point } from './layout';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
@@ -13,6 +14,7 @@ export const RULER_LENGTH_MM = 50;
 const CUT_COLOR = rgb(0, 0, 0);
 const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
 const MARK_COLOR = rgb(0.2, 0.2, 0.2);
+const SEAM_COLOR = rgb(0.3, 0.3, 0.3);
 
 interface PageContext {
   readonly pdfPage: PDFPage;
@@ -49,6 +51,21 @@ function drawPolygon(ctx: PageContext, points: readonly Point[], thickness: numb
       end: toPagePoint(ctx.pagination, ctx.page, b.xMm, b.yMm),
       thickness,
       color: CUT_COLOR,
+    });
+  }
+}
+
+/** 완성선. 접힘선(회색 긴 점선)과 헷갈리지 않도록 더 진하고 촘촘한 점선으로 긋는다. */
+function drawSeamLine(ctx: PageContext, points: readonly Point[]) {
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    ctx.pdfPage.drawLine({
+      start: toPagePoint(ctx.pagination, ctx.page, a.xMm, a.yMm),
+      end: toPagePoint(ctx.pagination, ctx.page, b.xMm, b.yMm),
+      thickness: 0.4,
+      color: SEAM_COLOR,
+      dashArray: [2, 2],
     });
   }
 }
@@ -130,21 +147,16 @@ function drawRuler(ctx: PageContext, font: PDFFont) {
   });
 }
 
-function drawGuidePage(
-  doc: PDFDocument,
-  layout: Layout,
-  pagination: Pagination,
-  font: PDFFont,
-) {
-  const page = doc.addPage([
-    pagination.pageWidthMm * MM_TO_PT,
-    pagination.pageHeightMm * MM_TO_PT,
-  ]);
-  const { widthMm: W, depthMm: D, heightMm: H } = layout.dimensions;
+const GUIDE_TITLE = 'BOX POUCH PATTERN';
 
-  const title = 'BOX POUCH PATTERN';
-  const lines = [
-    title,
+/**
+ * 안내 페이지 문구. pdf-lib 표준 폰트가 한글 글리프를 갖고 있지 않으므로
+ * ASCII만 쓴다. 한국어 안내는 화면(UI)에서 제공한다.
+ */
+export function guidePageLines(layout: Layout, pagination: Pagination): readonly string[] {
+  const { widthMm: W, depthMm: D, heightMm: H } = layout.dimensions;
+  return [
+    GUIDE_TITLE,
     '',
     `Finished  W ${W} x D ${D} x H ${H} mm`,
     `Pattern   ${round1(layout.totalWidthMm)} x ${round1(layout.totalHeightMm)} mm`,
@@ -156,8 +168,23 @@ function drawGuidePage(
     `Overlap ${PAGE_OVERLAP_MM}mm - align the cross marks and tape together.`,
     'A1 is top-left; A2 to the right, B1 below.',
     '',
-    'Seam allowance is already included - cut as drawn.',
+    'Solid outline = cut line. Seam allowance is already included.',
+    `Fine dashed inner line = stitch line (${SEAM_MM}mm seam allowance).`,
+    'Grey dashed line = fold line.',
   ];
+}
+
+function drawGuidePage(
+  doc: PDFDocument,
+  layout: Layout,
+  pagination: Pagination,
+  font: PDFFont,
+) {
+  const page = doc.addPage([
+    pagination.pageWidthMm * MM_TO_PT,
+    pagination.pageHeightMm * MM_TO_PT,
+  ]);
+  const lines = guidePageLines(layout, pagination);
 
   let yMm = PAGE_MARGIN_MM + 12;
   for (const line of lines) {
@@ -165,7 +192,7 @@ function drawGuidePage(
     page.drawText(line, {
       x: point.x,
       y: point.y,
-      size: line === title ? 16 : 10,
+      size: line === GUIDE_TITLE ? 16 : 10,
       font,
       color: CUT_COLOR,
     });
@@ -231,6 +258,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     const ctx: PageContext = { pdfPage, pagination, page };
 
     drawPolygon(ctx, layout.outlineMm, 1);
+    drawSeamLine(ctx, layout.seamLineMm);
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);
     for (const band of layout.bands) {
       if (band.yMm === 0) continue;

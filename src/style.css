@@ -65,7 +65,35 @@ body {
 }
 .preview svg { max-width: 100%; height: auto; }
 
-.note { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 8px 0 0; }
+.preview-summary {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend li { display: flex; align-items: center; gap: 8px; }
+
+.swatch { flex: none; width: 26px; height: 0; border-top-width: 2px; }
+.swatch-cut { border-top: 2px solid #222; }
+.swatch-seam { border-top: 2px dashed #b98a4b; }
+.swatch-fold { border-top: 2px dashed #888; }
+.swatch-tile { border-top: 2px dashed #c8d4e8; }
+.swatch-seam-band {
+  height: 12px;
+  border: 1px solid #b98a4b;
+  border-radius: 2px;
+  background: rgba(240, 224, 196, 0.55);
+}
 
 .papers { display: flex; gap: 16px; }
 .paper-option { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }

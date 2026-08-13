@@ -32,7 +32,34 @@ export interface Layout {
   readonly sideInsetMm: number;
   readonly bands: readonly Band[];
   readonly outlineMm: readonly Point[];
+  /** 재단선 안쪽으로 시접만큼 들어간 박음질선. */
+  readonly seamLineMm: readonly Point[];
   readonly foldLinesMm: readonly Line[];
+}
+
+/**
+ * 모든 변이 수평·수직인 시계 방향 폴리곤을 안쪽으로 `distanceMm`만큼 민다.
+ * y가 아래로 증가하는 좌표계에서 시계 방향 폴리곤의 안쪽 법선은
+ * 진행 방향 `(dx, dy)`에 대해 `(-dy, dx)`이다. 꼭짓점마다 수평 변이 y를,
+ * 수직 변이 x를 정해주므로 두 변의 오프셋선 교점이 곧 새 꼭짓점이다.
+ */
+function offsetInward(points: readonly Point[], distanceMm: number): Point[] {
+  const n = points.length;
+  return points.map((cur, i) => {
+    const prev = points[(i - 1 + n) % n]!;
+    const next = points[(i + 1) % n]!;
+    const incoming = { dx: Math.sign(cur.xMm - prev.xMm), dy: Math.sign(cur.yMm - prev.yMm) };
+    const outgoing = { dx: Math.sign(next.xMm - cur.xMm), dy: Math.sign(next.yMm - cur.yMm) };
+
+    const incomingIsHorizontal = incoming.dy === 0;
+    if (incomingIsHorizontal === (outgoing.dy === 0)) {
+      throw new Error('외곽선의 이웃 변이 수평·수직으로 번갈아 나오지 않습니다.');
+    }
+
+    return incomingIsHorizontal
+      ? { xMm: cur.xMm - distanceMm * outgoing.dy, yMm: cur.yMm + distanceMm * incoming.dx }
+      : { xMm: cur.xMm - distanceMm * incoming.dy, yMm: cur.yMm + distanceMm * outgoing.dx };
+  });
 }
 
 export function buildLayout(dimensions: Dimensions): Layout {
@@ -119,6 +146,7 @@ export function buildLayout(dimensions: Dimensions): Layout {
     sideInsetMm,
     bands,
     outlineMm,
+    seamLineMm: offsetInward(outlineMm, S),
     foldLinesMm,
   };
 }

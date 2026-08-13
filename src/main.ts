@@ -11,7 +11,7 @@ import {
   setPaperCount,
   writeInputs,
 } from './ui/form';
-import { renderPreviewSvg } from './ui/preview';
+import { describePagination, renderPreviewSvg } from './ui/preview';
 import './style.css';
 
 const PAGE_WARN_THRESHOLD = 20;
@@ -20,6 +20,7 @@ const presetsEl = document.getElementById('presets')!;
 const inputsEl = document.getElementById('inputs')!;
 const papersEl = document.getElementById('papers')!;
 const previewEl = document.getElementById('preview')!;
+const summaryEl = document.getElementById('preview-summary')!;
 const errorEl = document.getElementById('error')!;
 const downloadBtn = document.getElementById('download') as HTMLButtonElement;
 
@@ -41,6 +42,7 @@ function refresh(): void {
   if (!result.ok) {
     showError(result.errors.map((e) => e.message));
     previewEl.innerHTML = '';
+    summaryEl.textContent = '';
     downloadBtn.disabled = true;
     setPaperCount('a4', null);
     setPaperCount('a3', null);
@@ -51,6 +53,7 @@ function refresh(): void {
   const layout = buildLayout(result.value);
   const pagination = paginate(layout, paper);
   previewEl.innerHTML = renderPreviewSvg(layout, pagination);
+  summaryEl.textContent = describePagination(pagination);
   downloadBtn.disabled = false;
 
   setPaperCount('a4', paginate(layout, 'a4').pages.length);
