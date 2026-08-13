@@ -9,7 +9,10 @@ import {
   buildPdf,
   guidePageLines,
   guideThumbnailRectMm,
+  KOREAN_BOLD_FONT_CHARS,
   KOREAN_FONT_CHARS,
+  PATTERN_NOTE,
+  patternNotePointMm,
   SCALE_SQUARE_LABEL,
   scaleSquareRectMm,
   toFramePoint,
@@ -124,9 +127,7 @@ describe('buildPdf — 완성선', () => {
 
   it('PDF에 쓰는 모든 한국어가 서브셋 폰트 안에 있다', () => {
     const used = new Set(
-      [...guidePageLines(layout, paginate(layout, 'a4')), SCALE_SQUARE_LABEL]
-        .join('')
-        .replace(/\s/g, ''),
+      [...guidePageLines(layout, paginate(layout, 'a4')), SCALE_SQUARE_LABEL].join(''),
     );
     const missing = [...used].filter((ch) => !KOREAN_FONT_CHARS.has(ch));
     expect(missing).toEqual([]);
@@ -174,9 +175,9 @@ describe('축척 확인용 3cm 정사각형', () => {
     expect(pagination.pages.length).toBeGreaterThan(1);
     const doc = await PDFDocument.load(await buildPdf(layout, pagination));
 
-    expect(pageContent(doc, 0)).toContain(SCALE_COLOR_OPS);
+    expect(pageContent(doc, 0)).toContain(SCALE_SQUARE_STROKE);
     for (let i = 1; i < doc.getPageCount(); i++) {
-      expect(pageContent(doc, i)).not.toContain(SCALE_COLOR_OPS);
+      expect(pageContent(doc, i)).not.toContain(SCALE_SQUARE_STROKE);
     }
   });
 
@@ -194,8 +195,12 @@ describe('축척 확인용 3cm 정사각형', () => {
   });
 });
 
-/** 빨간 축척 사각형이 쓰는 색 지정 연산자. */
-const SCALE_COLOR_OPS = '0.85 0.1 0.1';
+/**
+ * 빨간 사각형은 테두리를 그리므로 스트로크 색(RG)을 지정한다.
+ * 도안 하단 문구도 같은 빨강이지만 글자라서 채움 색(rg)을 쓴다.
+ * 이 둘을 구분해야 "사각형이 도안 장에 없다"를 제대로 검사할 수 있다.
+ */
+const SCALE_SQUARE_STROKE = '0.85 0.1 0.1 RG';
 
 /** 해당 페이지의 콘텐츠 스트림을 풀어 텍스트로 돌려준다. */
 function pageContent(doc: PDFDocument, index: number): string {
@@ -243,5 +248,60 @@ describe('안내 페이지 축소도', () => {
     const square = scaleSquareRectMm(pagination);
     // 사각형은 오른쪽 위, 축소도는 그 아래에서 시작해야 한다.
     expect(thumb.yMm).toBeGreaterThanOrEqual(square.yMm + square.sizeMm);
+  });
+});
+
+describe('도안 하단 강조 문구', () => {
+  it('실제사이즈로 출력하라고 알려준다', () => {
+    expect(PATTERN_NOTE).toContain('실제사이즈');
+    expect(PATTERN_NOTE).toContain('출력');
+  });
+
+  it('문구의 모든 글자가 굵은 서브셋 폰트 안에 있다', () => {
+    // 공백도 글리프다. 빠지면 그 자리가 넓게 벌어진다.
+    const missing = [...PATTERN_NOTE].filter((ch) => !KOREAN_BOLD_FONT_CHARS.has(ch));
+    expect(missing).toEqual([]);
+  });
+
+  it('모든 용지·방향에서 페이지 안에 들어간다', () => {
+    for (const paper of ['a4', 'a3'] as const) {
+      for (const dims of [
+        { widthMm: 150, heightMm: 90, depthMm: 50 },
+        { widthMm: 400, heightMm: 300, depthMm: 200 },
+      ]) {
+        const pagination = paginate(buildLayout(dims), paper);
+        const point = patternNotePointMm(pagination);
+        expect(point.xMm).toBeGreaterThan(0);
+        expect(point.xMm).toBeLessThan(pagination.pageWidthMm);
+        expect(point.yMm).toBeGreaterThan(0);
+        expect(point.yMm).toBeLessThan(pagination.pageHeightMm);
+      }
+    }
+  });
+
+  it('도안이 그려지는 인쇄 영역 아래에 놓여 도면과 겹치지 않는다', () => {
+    for (const paper of ['a4', 'a3'] as const) {
+      const pagination = paginate(buildLayout({ widthMm: 150, heightMm: 90, depthMm: 50 }), paper);
+      const point = patternNotePointMm(pagination);
+      // 도안은 위쪽 여백부터 아래쪽 여백까지만 그려진다.
+      expect(point.yMm).toBeGreaterThan(pagination.pageHeightMm - PAGE_MARGIN_MM);
+    }
+  });
+
+  it('가로 가운데에 놓인다', () => {
+    const pagination = paginate(buildLayout({ widthMm: 150, heightMm: 90, depthMm: 50 }), 'a4');
+    expect(patternNotePointMm(pagination).xMm).toBeCloseTo(pagination.pageWidthMm / 2, 6);
+  });
+});
+
+describe('빨간 문구와 사각형의 분업', () => {
+  it('도안 장에는 하단 문구만 있고 사각형은 없다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const doc = await PDFDocument.load(await buildPdf(layout, pagination));
+    for (let i = 1; i < doc.getPageCount(); i++) {
+      const content = pageContent(doc, i);
+      expect(content).toContain('0.85 0.1 0.1 rg');   // 문구
+      expect(content).not.toContain('0.85 0.1 0.1 RG'); // 사각형 테두리
+    }
   });
 });

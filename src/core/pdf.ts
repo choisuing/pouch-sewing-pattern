@@ -3,7 +3,7 @@
 // 서브셋에 없는 글자는 그리지 못하니, 문구를 바꿀 때는 서브셋도 다시 만들어야 한다.
 import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import { KOREAN_FONT_BASE64 } from './korean-font';
+import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
 import { SEAM_MM } from './constants';
 import type { Layout, Line, Point } from './layout';
@@ -33,8 +33,25 @@ function decodeBase64(value: string): Uint8Array {
 /** 축척 확인용 정사각형 한 변 (mm). 인쇄 후 자로 재는 기준. */
 export const SCALE_SQUARE_MM = 30;
 
-/** 사각형 옆에 붙는 문구. 표준 폰트가 한글을 못 그리므로 영문만 쓴다. */
+/** 빨간 사각형 옆에 붙는 문구. */
 export const SCALE_SQUARE_LABEL = '3cm 확인하세요!';
+
+/** 도안 장마다 아래쪽에 넣는 강조 문구. 굵은 서브셋 폰트로 그린다. */
+export const PATTERN_NOTE = "'실제사이즈'로 출력해주세요!";
+
+/** 굵은 서브셋 폰트가 담고 있는 글자. PATTERN_NOTE만 그릴 수 있다. */
+export const KOREAN_BOLD_FONT_CHARS: ReadonlySet<string> = new Set(" '!로사세실요이제주즈출력해");
+
+/**
+ * 도안 하단 문구의 기준점 (mm). 가로 가운데, 인쇄 영역 바깥 아래쪽 여백에 둔다.
+ * 도안은 사방 여백 안쪽에만 그려지므로 이 자리는 도면과 절대 겹치지 않는다.
+ */
+export function patternNotePointMm(pagination: Pagination): { xMm: number; yMm: number } {
+  return {
+    xMm: pagination.pageWidthMm / 2,
+    yMm: pagination.pageHeightMm - PAGE_MARGIN_MM + 5.5,
+  };
+}
 
 const CUT_COLOR = rgb(0, 0, 0);
 const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
@@ -162,6 +179,23 @@ export function scaleSquareRectMm(pagination: Pagination): {
  * 배율 100%로 인쇄됐는지 자로 확인하는 사각형. 도면 선과 헷갈리지 않도록
  * 빨간색으로만 그린다.
  */
+/** 도안 장 아래쪽 강조 문구. 실치수로 뽑아야 한다는 걸 인쇄물에서도 알 수 있게 한다. */
+function drawPatternNote(ctx: PageContext, boldFont: PDFFont) {
+  const { pagination } = ctx;
+  const point = patternNotePointMm(pagination);
+  const size = 9;
+  const widthPt = boldFont.widthOfTextAtSize(PATTERN_NOTE, size);
+  const anchor = toFramePoint(pagination, point.xMm, point.yMm);
+
+  ctx.pdfPage.drawText(PATTERN_NOTE, {
+    x: anchor.x - widthPt / 2,
+    y: anchor.y,
+    size,
+    font: boldFont,
+    color: SCALE_COLOR,
+  });
+}
+
 function drawScaleSquare(page: PDFPage, pagination: Pagination, font: PDFFont) {
   const rect = scaleSquareRectMm(pagination);
   const topLeft = toFramePoint(pagination, rect.xMm, rect.yMm);
@@ -310,6 +344,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const font = await doc.embedFont(decodeBase64(KOREAN_FONT_BASE64));
+  const boldFont = await doc.embedFont(decodeBase64(KOREAN_BOLD_FONT_BASE64));
 
   drawGuidePage(doc, layout, pagination, font);
 
@@ -334,6 +369,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     }
 
     drawAlignmentMarks(ctx, font);
+    drawPatternNote(ctx, boldFont);
   }
 
   return doc.save();
