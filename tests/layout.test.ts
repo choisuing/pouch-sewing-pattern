@@ -80,3 +80,50 @@ describe('buildLayout — 불변식', () => {
     expect(topFront?.heightMm).toBe(62.5);
   });
 });
+
+describe('buildLayout — 외곽선과 접힘선', () => {
+  const layout = buildLayout(travel);
+
+  it('외곽선이 20각형이다', () => {
+    // 좌우 각각 앞판 홈 5점 + 뒤판 홈 5점 = 10점, 대칭으로 총 20점
+    expect(layout.outlineMm).toHaveLength(20);
+  });
+
+  it('외곽선이 닫힌 도형이며 전체 크기에 딱 맞는다', () => {
+    const xs = layout.outlineMm.map((p) => p.xMm);
+    const ys = layout.outlineMm.map((p) => p.yMm);
+    expect(Math.min(...xs)).toBe(0);
+    expect(Math.max(...xs)).toBe(layout.totalWidthMm);
+    expect(Math.min(...ys)).toBe(0);
+    expect(Math.max(...ys)).toBe(layout.totalHeightMm);
+  });
+
+  it('외곽선의 이웃 꼭짓점은 항상 수평 또는 수직으로 이어진다', () => {
+    const pts = layout.outlineMm;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      const sameX = Math.abs(a.xMm - b.xMm) < 1e-9;
+      const sameY = Math.abs(a.yMm - b.yMm) < 1e-9;
+      expect(sameX || sameY).toBe(true);
+    }
+  });
+
+  it('오목한 부분이 앞판·뒤판 좌우에 생긴다', () => {
+    // 앞판 왼쪽 위 모서리 (70, 65) 가 외곽선 꼭짓점이어야 한다
+    const hasCorner = layout.outlineMm.some(
+      (p) => Math.abs(p.xMm - 70) < 1e-9 && Math.abs(p.yMm - 65) < 1e-9,
+    );
+    expect(hasCorner).toBe(true);
+  });
+
+  it('접힘선이 좌우 2개이며 전체 높이를 관통한다', () => {
+    expect(layout.foldLinesMm).toHaveLength(2);
+    for (const line of layout.foldLinesMm) {
+      expect(line.x1Mm).toBe(line.x2Mm);
+      expect(line.y1Mm).toBe(0);
+      expect(line.y2Mm).toBe(layout.totalHeightMm);
+    }
+    expect(layout.foldLinesMm.map((l) => l.x1Mm)).toEqual([70, 360]);
+  });
+});

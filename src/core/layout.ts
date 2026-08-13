@@ -70,13 +70,55 @@ export function buildLayout(dimensions: Dimensions): Layout {
     y += spec.heightMm;
   }
 
+  const left = sideInsetMm;
+  const right = totalWidthMm - sideInsetMm;
+  const topBandBottom = topBandHeightMm;
+  const frontBottom = topBandBottom + panelHeightMm;
+  const bottomBandBottom = frontBottom + bottomBandHeightMm;
+  const backBottom = bottomBandBottom + panelHeightMm;
+  const total = y;
+
+  // 좌상단에서 시계 방향으로 한 바퀴.
+  // 오른쪽 변을 내려가며 앞판 홈 → 뒤판 홈, 왼쪽 변을 올라오며 뒤판 홈 → 앞판 홈.
+  const outlineMm: Point[] = [
+    { xMm: 0, yMm: 0 },
+    { xMm: totalWidthMm, yMm: 0 },
+    // 오른쪽 — 앞판 홈
+    { xMm: totalWidthMm, yMm: topBandBottom },
+    { xMm: right, yMm: topBandBottom },
+    { xMm: right, yMm: frontBottom },
+    { xMm: totalWidthMm, yMm: frontBottom },
+    // 오른쪽 — 뒤판 홈
+    { xMm: totalWidthMm, yMm: bottomBandBottom },
+    { xMm: right, yMm: bottomBandBottom },
+    { xMm: right, yMm: backBottom },
+    { xMm: totalWidthMm, yMm: backBottom },
+    { xMm: totalWidthMm, yMm: total },
+    { xMm: 0, yMm: total },
+    // 왼쪽 — 뒤판 홈
+    { xMm: 0, yMm: backBottom },
+    { xMm: left, yMm: backBottom },
+    { xMm: left, yMm: bottomBandBottom },
+    { xMm: 0, yMm: bottomBandBottom },
+    // 왼쪽 — 앞판 홈
+    { xMm: 0, yMm: frontBottom },
+    { xMm: left, yMm: frontBottom },
+    { xMm: left, yMm: topBandBottom },
+    { xMm: 0, yMm: topBandBottom },
+  ];
+
+  const foldLinesMm: Line[] = [
+    { x1Mm: left, y1Mm: 0, x2Mm: left, y2Mm: total },
+    { x1Mm: right, y1Mm: 0, x2Mm: right, y2Mm: total },
+  ];
+
   return {
     dimensions,
     totalWidthMm,
     totalHeightMm: y,
     sideInsetMm,
     bands,
-    outlineMm: [],
-    foldLinesMm: [],
+    outlineMm,
+    foldLinesMm,
   };
 }
