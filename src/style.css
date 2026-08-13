@@ -255,7 +255,8 @@ body {
 .swatch-cut { border-top: 2px solid #222; }
 .swatch-seam { border-top: 2px dashed #b98a4b; }
 .swatch-fold { border-top: 2px dashed #888; }
-.swatch-tile { border-top: 2px dashed #c8d4e8; }
+/* 아래 견본색은 preview.ts / shape.ts가 그리는 선과 같은 값을 써야 한다. */
+.swatch-tile { border-top: 2px dashed #2a7387; }
 .swatch-seam-band {
   height: 12px;
   border: 1px solid #b98a4b;

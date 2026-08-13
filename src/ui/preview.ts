@@ -9,6 +9,13 @@ export function escapeXml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * 인쇄 페이지 경계와 칸 번호. 화면 요약줄(--info)과 같은 청록 계열이라
+ * "페이지"라는 개념이 한 색으로 묶인다. 회색으로 두면 접힘선과 헷갈린다.
+ * 배경 #fbf7f0 위에서 5.04:1 — 선(3:1)과 글자(4.5:1) 기준을 모두 넘는다.
+ */
+const TILE_COLOR = '#2a7387';
+
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -47,14 +54,14 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     .map((page) => {
       const tileW = Math.min(pagination.contentWidthMm, w - page.originXMm);
       const tileH = Math.min(pagination.contentHeightMm, h - page.originYMm);
-      return `<rect class="page-tile" x="${round1(page.originXMm)}" y="${round1(page.originYMm)}" width="${round1(tileW)}" height="${round1(tileH)}" fill="none" stroke="#c8d4e8" stroke-width="1" stroke-dasharray="6 4" />`;
+      return `<rect class="page-tile" x="${round1(page.originXMm)}" y="${round1(page.originYMm)}" width="${round1(tileW)}" height="${round1(tileH)}" fill="none" stroke="${TILE_COLOR}" stroke-width="1" stroke-dasharray="6 4" />`;
     })
     .join('');
 
   const tileLabels = pagination.pages
     .map(
       (page) =>
-        `<text class="tile-label" x="${round1(page.originXMm + 4)}" y="${round1(page.originYMm + 14)}" font-size="11" fill="#8fa4c4">${escapeXml(page.gridLabel)}</text>`,
+        `<text class="tile-label" x="${round1(page.originXMm + 4)}" y="${round1(page.originYMm + 14)}" font-size="11" fill="${TILE_COLOR}">${escapeXml(page.gridLabel)}</text>`,
     )
     .join('');
 

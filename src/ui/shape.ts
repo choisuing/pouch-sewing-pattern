@@ -81,7 +81,7 @@ export function renderShapeSvg(dimensions: Dimensions): string {
   ]
     .map(([a, b]) => {
       const dash = `${round1(stroke * 3)} ${round1(stroke * 2.2)}`;
-      return `<line class="hidden-edge" x1="${round1(a!.x)}" y1="${round1(a!.y)}" x2="${round1(b!.x)}" y2="${round1(b!.y)}" stroke="#999" stroke-width="${round1(stroke * 0.65)}" stroke-dasharray="${dash}" />`;
+      return `<line class="hidden-edge" x1="${round1(a!.x)}" y1="${round1(a!.y)}" x2="${round1(b!.x)}" y2="${round1(b!.y)}" stroke="#858585" stroke-width="${round1(stroke * 0.65)}" stroke-dasharray="${dash}" />`;
     })
     .join('');
 
