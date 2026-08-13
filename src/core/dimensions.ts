@@ -1,4 +1,5 @@
 import { DIMENSION_ORDER, FIELD_LABELS, RANGES, type DimensionField } from './constants';
+import { withObjectParticle, withTopicParticle } from './korean';
 
 export interface Dimensions {
   readonly widthMm: number;
@@ -26,15 +27,15 @@ export function validateDimensions(input: Record<DimensionField, unknown>): Vali
     const num = typeof raw === 'number' ? raw : Number(raw);
 
     if (raw === '' || raw === null || raw === undefined || !Number.isFinite(num)) {
-      errors.push({ field, message: `${label}를 숫자로 입력해주세요.` });
+      errors.push({ field, message: `${withObjectParticle(label)} 숫자로 입력해주세요.` });
       continue;
     }
     if (!Number.isInteger(num)) {
-      errors.push({ field, message: `${label}는 1mm 단위 정수로 입력해주세요.` });
+      errors.push({ field, message: `${withTopicParticle(label)} 1mm 단위 정수로 입력해주세요.` });
       continue;
     }
     if (num < min || num > max) {
-      errors.push({ field, message: `${label}는 ${min}mm 이상 ${max}mm 이하여야 합니다.` });
+      errors.push({ field, message: `${withTopicParticle(label)} ${min}mm 이상 ${max}mm 이하여야 합니다.` });
       continue;
     }
     values[field] = num;

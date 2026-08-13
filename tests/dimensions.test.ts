@@ -73,3 +73,33 @@ describe('PRESETS', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe('오류 메시지 — 한국어 조사', () => {
+  const messageFor = (field: 'widthMm' | 'heightMm' | 'depthMm', value: unknown) => {
+    const base = { widthMm: 150, heightMm: 90, depthMm: 50 };
+    const result = validateDimensions({ ...base, [field]: value });
+    if (result.ok) throw new Error('거부되어야 한다');
+    return result.errors[0]!.message;
+  };
+
+  it('받침 있는 이름에 은/을을 쓴다', () => {
+    expect(messageFor('depthMm', 9999)).toContain('바닥폭은');
+    expect(messageFor('depthMm', 'abc')).toContain('바닥폭을');
+    expect(messageFor('depthMm', 50.5)).toContain('바닥폭은');
+  });
+
+  it('받침 없는 이름에 는/를을 쓴다', () => {
+    expect(messageFor('widthMm', 9999)).toContain('가로는');
+    expect(messageFor('widthMm', 'abc')).toContain('가로를');
+    expect(messageFor('heightMm', 9999)).toContain('높이는');
+  });
+
+  it('어떤 메시지에도 잘못된 조사가 남지 않는다', () => {
+    for (const field of ['widthMm', 'heightMm', 'depthMm'] as const) {
+      for (const bad of [9999, 'abc', 1.5]) {
+        const message = messageFor(field, bad);
+        expect(message).not.toMatch(/폭는|폭를/);
+      }
+    }
+  });
+});

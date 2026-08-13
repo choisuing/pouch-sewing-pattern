@@ -17,6 +17,20 @@ describe('DIMENSION_ORDER', () => {
       expect(FIELD_LABELS[field]).toBeTruthy();
     }
   });
+
+  it('화면에 보이는 순서대로 가로·높이·바닥폭이라 부른다', () => {
+    expect(DIMENSION_ORDER.map((field) => FIELD_LABELS[field])).toEqual([
+      '가로',
+      '높이',
+      '바닥폭',
+    ]);
+  });
+
+  it('높이와 헷갈리는 "세로"라는 이름을 쓰지 않는다', () => {
+    for (const field of DIMENSION_ORDER) {
+      expect(FIELD_LABELS[field]).not.toContain('세로');
+    }
+  });
 });
 
 describe('formatPresetLabel', () => {

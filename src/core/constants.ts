@@ -30,7 +30,7 @@ export const RANGES: Record<DimensionField, Range> = {
 
 export const FIELD_LABELS: Record<DimensionField, string> = {
   widthMm: '가로',
-  depthMm: '세로(바닥폭)',
+  depthMm: '바닥폭',
   heightMm: '높이',
 };
 
