@@ -26,7 +26,8 @@ describe('paginate', () => {
     const p = paginate(layout, 'a4');
     const step = p.contentWidthMm - PAGE_OVERLAP_MM;
     const secondInRow = p.pages.find((pg) => pg.row === 0 && pg.col === 1);
-    if (secondInRow) expect(secondInRow.originXMm).toBeCloseTo(step, 10);
+    expect(secondInRow).toBeDefined();
+    expect(secondInRow?.originXMm).toBeCloseTo(step, 10);
   });
 
   it('인쇄 영역이 용지에서 여백을 뺀 크기다', () => {
@@ -40,9 +41,11 @@ describe('paginate', () => {
     expect(p.pages).toHaveLength(p.rows * p.cols);
     expect(p.pages[0]?.gridLabel).toBe('A1');
     const second = p.pages.find((pg) => pg.row === 0 && pg.col === 1);
-    if (second) expect(second.gridLabel).toBe('A2');
+    expect(second).toBeDefined();
+    expect(second?.gridLabel).toBe('A2');
     const nextRow = p.pages.find((pg) => pg.row === 1 && pg.col === 0);
-    if (nextRow) expect(nextRow.gridLabel).toBe('B1');
+    expect(nextRow).toBeDefined();
+    expect(nextRow?.gridLabel).toBe('B1');
   });
 
   it('A3가 A4보다 장수가 적거나 같다', () => {
