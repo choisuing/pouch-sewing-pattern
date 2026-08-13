@@ -20,14 +20,24 @@ interface PageContext {
   readonly page: Page;
 }
 
-/** 전개도 좌표(mm) → PDF 좌표(pt). 페이지 원점과 y축 뒤집기를 함께 처리한다. */
-function toPagePoint(ctx: PageContext, xMm: number, yMm: number): { x: number; y: number } {
-  const localXMm = xMm - ctx.page.originXMm + PAGE_MARGIN_MM;
-  const localYMm = yMm - ctx.page.originYMm + PAGE_MARGIN_MM;
+/**
+ * 페이지 프레임 좌표(mm, 페이지 자체 기준) → PDF 좌표(pt).
+ * 전개도 원점 오프셋 없이 y축 뒤집기(페이지 좌상단 원점 → PDF 좌하단 원점)만 적용한다.
+ * 이 파일에서 y 반전식은 이 함수 안에만 있고, 나머지 좌표 계산은 모두 이 함수
+ * (또는 이를 감싸는 toPagePoint)를 통과한다.
+ */
+export function toFramePoint(pagination: Pagination, xMm: number, yMm: number): { x: number; y: number } {
   return {
-    x: localXMm * MM_TO_PT,
-    y: (ctx.pagination.pageHeightMm - localYMm) * MM_TO_PT,
+    x: xMm * MM_TO_PT,
+    y: (pagination.pageHeightMm - yMm) * MM_TO_PT,
   };
+}
+
+/** 전개도 좌표(mm) → PDF 좌표(pt). 페이지 원점 오프셋을 얹은 뒤 toFramePoint로 뒤집는다. */
+export function toPagePoint(pagination: Pagination, page: Page, xMm: number, yMm: number): { x: number; y: number } {
+  const localXMm = xMm - page.originXMm + PAGE_MARGIN_MM;
+  const localYMm = yMm - page.originYMm + PAGE_MARGIN_MM;
+  return toFramePoint(pagination, localXMm, localYMm);
 }
 
 function drawPolygon(ctx: PageContext, points: readonly Point[], thickness: number) {
@@ -35,8 +45,8 @@ function drawPolygon(ctx: PageContext, points: readonly Point[], thickness: numb
     const a = points[i]!;
     const b = points[(i + 1) % points.length]!;
     ctx.pdfPage.drawLine({
-      start: toPagePoint(ctx, a.xMm, a.yMm),
-      end: toPagePoint(ctx, b.xMm, b.yMm),
+      start: toPagePoint(ctx.pagination, ctx.page, a.xMm, a.yMm),
+      end: toPagePoint(ctx.pagination, ctx.page, b.xMm, b.yMm),
       thickness,
       color: CUT_COLOR,
     });
@@ -45,8 +55,8 @@ function drawPolygon(ctx: PageContext, points: readonly Point[], thickness: numb
 
 function drawFoldLine(ctx: PageContext, line: Line) {
   ctx.pdfPage.drawLine({
-    start: toPagePoint(ctx, line.x1Mm, line.y1Mm),
-    end: toPagePoint(ctx, line.x2Mm, line.y2Mm),
+    start: toPagePoint(ctx.pagination, ctx.page, line.x1Mm, line.y1Mm),
+    end: toPagePoint(ctx.pagination, ctx.page, line.x2Mm, line.y2Mm),
     thickness: 0.5,
     color: FOLD_COLOR,
     dashArray: [4, 4],
@@ -64,8 +74,7 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
   ];
 
   for (const corner of corners) {
-    const x = corner.xMm * MM_TO_PT;
-    const y = (pagination.pageHeightMm - corner.yMm) * MM_TO_PT;
+    const { x, y } = toFramePoint(pagination, corner.xMm, corner.yMm);
     ctx.pdfPage.drawLine({
       start: { x: x - armPt, y },
       end: { x: x + armPt, y },
@@ -80,9 +89,10 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
     });
   }
 
+  const labelPoint = toFramePoint(pagination, PAGE_MARGIN_MM + 2, PAGE_MARGIN_MM + 6);
   ctx.pdfPage.drawText(page.gridLabel, {
-    x: (PAGE_MARGIN_MM + 2) * MM_TO_PT,
-    y: (pagination.pageHeightMm - PAGE_MARGIN_MM - 6) * MM_TO_PT,
+    x: labelPoint.x,
+    y: labelPoint.y,
     size: 12,
     font,
     color: MARK_COLOR,
@@ -93,25 +103,27 @@ function drawRuler(ctx: PageContext, font: PDFFont) {
   const { pagination } = ctx;
   const startXMm = PAGE_MARGIN_MM + 4;
   const yMm = pagination.pageHeightMm - PAGE_MARGIN_MM - 4;
-  const y = (pagination.pageHeightMm - yMm) * MM_TO_PT;
+  const start = toFramePoint(pagination, startXMm, yMm);
+  const end = toFramePoint(pagination, startXMm + RULER_LENGTH_MM, yMm);
 
   ctx.pdfPage.drawLine({
-    start: { x: startXMm * MM_TO_PT, y },
-    end: { x: (startXMm + RULER_LENGTH_MM) * MM_TO_PT, y },
+    start,
+    end,
     thickness: 1,
     color: MARK_COLOR,
   });
   for (const tickXMm of [startXMm, startXMm + RULER_LENGTH_MM]) {
+    const tickStart = toFramePoint(pagination, tickXMm, yMm);
     ctx.pdfPage.drawLine({
-      start: { x: tickXMm * MM_TO_PT, y },
-      end: { x: tickXMm * MM_TO_PT, y: y + 3 * MM_TO_PT },
+      start: tickStart,
+      end: { x: tickStart.x, y: tickStart.y + 3 * MM_TO_PT },
       thickness: 1,
       color: MARK_COLOR,
     });
   }
   ctx.pdfPage.drawText(`${RULER_LENGTH_MM}mm`, {
     x: (startXMm + RULER_LENGTH_MM + 3) * MM_TO_PT,
-    y: y - 1,
+    y: start.y - 1,
     size: 8,
     font,
     color: MARK_COLOR,
@@ -149,9 +161,10 @@ function drawGuidePage(
 
   let yMm = PAGE_MARGIN_MM + 12;
   for (const line of lines) {
+    const point = toFramePoint(pagination, PAGE_MARGIN_MM + 6, yMm);
     page.drawText(line, {
-      x: (PAGE_MARGIN_MM + 6) * MM_TO_PT,
-      y: (pagination.pageHeightMm - yMm) * MM_TO_PT,
+      x: point.x,
+      y: point.y,
       size: line === title ? 16 : 10,
       font,
       color: CUT_COLOR,
@@ -165,21 +178,23 @@ function drawGuidePage(
   const originYMm = yMm + 8;
 
   for (const tile of pagination.pages) {
-    const x = (PAGE_MARGIN_MM + 6 + tile.originXMm * scale) * MM_TO_PT;
+    const rectXMm = PAGE_MARGIN_MM + 6 + tile.originXMm * scale;
     const wMm = Math.min(pagination.contentWidthMm, layout.totalWidthMm - tile.originXMm) * scale;
     const hMm = Math.min(pagination.contentHeightMm, layout.totalHeightMm - tile.originYMm) * scale;
     const yTopMm = originYMm + tile.originYMm * scale;
+    const bottomLeft = toFramePoint(pagination, rectXMm, yTopMm + hMm);
     page.drawRectangle({
-      x,
-      y: (pagination.pageHeightMm - yTopMm - hMm) * MM_TO_PT,
+      x: bottomLeft.x,
+      y: bottomLeft.y,
       width: wMm * MM_TO_PT,
       height: hMm * MM_TO_PT,
       borderColor: FOLD_COLOR,
       borderWidth: 0.5,
     });
+    const labelPoint = toFramePoint(pagination, rectXMm, yTopMm + 5);
     page.drawText(tile.gridLabel, {
-      x: x + 3,
-      y: (pagination.pageHeightMm - yTopMm - 5) * MM_TO_PT,
+      x: labelPoint.x + 3,
+      y: labelPoint.y,
       size: 7,
       font,
       color: MARK_COLOR,
@@ -190,14 +205,8 @@ function drawGuidePage(
     const a = layout.outlineMm[i]!;
     const b = layout.outlineMm[(i + 1) % layout.outlineMm.length]!;
     page.drawLine({
-      start: {
-        x: (PAGE_MARGIN_MM + 6 + a.xMm * scale) * MM_TO_PT,
-        y: (pagination.pageHeightMm - originYMm - a.yMm * scale) * MM_TO_PT,
-      },
-      end: {
-        x: (PAGE_MARGIN_MM + 6 + b.xMm * scale) * MM_TO_PT,
-        y: (pagination.pageHeightMm - originYMm - b.yMm * scale) * MM_TO_PT,
-      },
+      start: toFramePoint(pagination, PAGE_MARGIN_MM + 6 + a.xMm * scale, originYMm + a.yMm * scale),
+      end: toFramePoint(pagination, PAGE_MARGIN_MM + 6 + b.xMm * scale, originYMm + b.yMm * scale),
       thickness: 0.8,
       color: CUT_COLOR,
     });
