@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PDFDocument } from 'pdf-lib';
+import { inflateSync } from 'node:zlib';
+import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
 import { buildLayout } from '../src/core/layout';
 import { paginate, PAGE_MARGIN_MM, type Page, type Pagination } from '../src/core/tiling';
 import {
@@ -132,16 +133,30 @@ describe('축척 확인용 3cm 정사각형', () => {
     }
   });
 
-  it('격자 라벨이 있는 좌상단을 피해 아래쪽에 놓인다', () => {
+  it('안내 문구와 겹치지 않도록 오른쪽 위에 놓인다', () => {
     const pagination = paginate(layout, 'a4');
     const rect = scaleSquareRectMm(pagination);
-    expect(rect.yMm).toBeGreaterThan(pagination.pageHeightMm / 2);
+    expect(rect.xMm).toBeGreaterThan(pagination.pageWidthMm / 2);
+    expect(rect.yMm).toBeLessThan(pagination.pageHeightMm / 2);
+  });
+
+  it('안내 페이지에만 그리고 도안 장은 건드리지 않는다', async () => {
+    const pagination = paginate(layout, 'a4');
+    expect(pagination.pages.length).toBeGreaterThan(1);
+    const doc = await PDFDocument.load(await buildPdf(layout, pagination));
+
+    expect(pageContent(doc, 0)).toContain(SCALE_COLOR_OPS);
+    for (let i = 1; i < doc.getPageCount(); i++) {
+      expect(pageContent(doc, i)).not.toContain(SCALE_COLOR_OPS);
+    }
   });
 
   it('안내 페이지가 3cm 사각형을 설명한다', () => {
     const text = guidePageLines(layout, paginate(layout, 'a4')).join('\n');
     expect(text).toContain('3cm');
     expect(text).not.toContain('50mm ruler');
+    // 도안 장이 아니라 이 페이지에서 재라고 알려줘야 한다.
+    expect(text).not.toContain('each sheet');
   });
 
   it('사각형을 실제로 그린다', async () => {
@@ -152,3 +167,14 @@ describe('축척 확인용 3cm 정사각형', () => {
     expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
   });
 });
+
+/** 빨간 축척 사각형이 쓰는 색 지정 연산자. */
+const SCALE_COLOR_OPS = '0.85 0.1 0.1';
+
+/** 해당 페이지의 콘텐츠 스트림을 풀어 텍스트로 돌려준다. */
+function pageContent(doc: PDFDocument, index: number): string {
+  const contents = doc.getPage(index).node.Contents();
+  const stream = contents instanceof PDFArray ? contents.lookup(0) : contents;
+  if (!(stream instanceof PDFRawStream)) throw new Error('콘텐츠 스트림을 찾지 못했다');
+  return inflateSync(Buffer.from(stream.asUint8Array())).toString('latin1');
+}

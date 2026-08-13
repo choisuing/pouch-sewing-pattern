@@ -121,8 +121,8 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
 }
 
 /**
- * 축척 확인용 사각형의 위치와 크기 (mm). 인쇄 영역 왼쪽 아래에 놓는다.
- * 좌상단은 격자 라벨이 쓰고 있어 피한다.
+ * 축척 확인용 사각형의 위치와 크기 (mm). 안내 페이지 오른쪽 위에 놓는다.
+ * 안내 문구는 왼쪽에 짧게 깔리므로 이 자리가 비어 있다.
  */
 export function scaleSquareRectMm(pagination: Pagination): {
   xMm: number;
@@ -130,8 +130,8 @@ export function scaleSquareRectMm(pagination: Pagination): {
   sizeMm: number;
 } {
   return {
-    xMm: PAGE_MARGIN_MM + 4,
-    yMm: pagination.pageHeightMm - PAGE_MARGIN_MM - 4 - SCALE_SQUARE_MM,
+    xMm: pagination.pageWidthMm - PAGE_MARGIN_MM - 4 - SCALE_SQUARE_MM,
+    yMm: PAGE_MARGIN_MM + 8,
     sizeMm: SCALE_SQUARE_MM,
   };
 }
@@ -140,12 +140,11 @@ export function scaleSquareRectMm(pagination: Pagination): {
  * 배율 100%로 인쇄됐는지 자로 확인하는 사각형. 도면 선과 헷갈리지 않도록
  * 빨간색으로만 그린다.
  */
-function drawScaleSquare(ctx: PageContext, font: PDFFont) {
-  const { pagination } = ctx;
+function drawScaleSquare(page: PDFPage, pagination: Pagination, font: PDFFont) {
   const rect = scaleSquareRectMm(pagination);
   const topLeft = toFramePoint(pagination, rect.xMm, rect.yMm);
 
-  ctx.pdfPage.drawRectangle({
+  page.drawRectangle({
     x: topLeft.x,
     y: topLeft.y - rect.sizeMm * MM_TO_PT,
     width: rect.sizeMm * MM_TO_PT,
@@ -154,9 +153,9 @@ function drawScaleSquare(ctx: PageContext, font: PDFFont) {
     borderWidth: 1,
   });
 
-  ctx.pdfPage.drawText(SCALE_SQUARE_LABEL, {
-    x: (rect.xMm + rect.sizeMm + 3) * MM_TO_PT,
-    y: topLeft.y - rect.sizeMm * MM_TO_PT + 2,
+  page.drawText(SCALE_SQUARE_LABEL, {
+    x: rect.xMm * MM_TO_PT,
+    y: topLeft.y + 3,
     size: 9,
     font,
     color: SCALE_COLOR,
@@ -179,7 +178,7 @@ export function guidePageLines(layout: Layout, pagination: Pagination): readonly
     `Paper     ${pagination.paper.toUpperCase()} ${pagination.orientation} - ${pagination.pages.length} sheets (${pagination.rows} x ${pagination.cols})`,
     '',
     'PRINT AT 100% - do NOT use "fit to page".',
-    'Measure the red square on each sheet - it must be exactly 3cm.',
+    'Measure the red square on THIS page - it must be exactly 3cm.',
     '',
     `Overlap ${PAGE_OVERLAP_MM}mm - align the cross marks and tape together.`,
     'A1 is top-left; A2 to the right, B1 below.',
@@ -200,6 +199,8 @@ function drawGuidePage(
     pagination.pageWidthMm * MM_TO_PT,
     pagination.pageHeightMm * MM_TO_PT,
   ]);
+  drawScaleSquare(page, pagination, font);
+
   const lines = guidePageLines(layout, pagination);
 
   let yMm = PAGE_MARGIN_MM + 12;
@@ -287,7 +288,6 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     }
 
     drawAlignmentMarks(ctx, font);
-    drawScaleSquare(ctx, font);
   }
 
   return doc.save();
