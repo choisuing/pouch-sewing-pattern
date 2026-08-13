@@ -8,6 +8,9 @@ import {
   SCALE_SQUARE_MM,
   buildPdf,
   guidePageLines,
+  guideThumbnailRectMm,
+  KOREAN_FONT_CHARS,
+  SCALE_SQUARE_LABEL,
   scaleSquareRectMm,
   toFramePoint,
   toPagePoint,
@@ -91,16 +94,42 @@ describe('buildPdf — 완성선', () => {
     expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
   });
 
-  it('안내 페이지 문구에 완성선 설명을 넣는다', () => {
-    const lines = guidePageLines(layout, paginate(layout, 'a4'));
-    expect(lines.join('\n')).toContain('stitch line');
+  it('안내 페이지를 한국어로 쓴다', () => {
+    const text = guidePageLines(layout, paginate(layout, 'a4')).join('\n');
+    expect(text).toContain('완성 치수');
+    expect(text).toContain('도안 크기');
+    expect(text).toContain('용지');
   });
 
-  it('안내 문구를 표준 폰트가 인코딩할 수 있는 문자로만 쓴다', () => {
-    // pdf-lib 표준 폰트는 WinAnsi 밖의 글자를 인코딩하지 못한다.
-    for (const line of guidePageLines(layout, paginate(layout, 'a4'))) {
-      expect(line).toMatch(/^[\x20-\x7e]*$/);
+  it('설명 문구를 남기지 않고 치수만 적는다', () => {
+    const lines = guidePageLines(layout, paginate(layout, 'a4')).filter((l) => l !== '');
+    expect(lines).toHaveLength(3);
+  });
+
+  it('칸 번호에 쓰이는 글자가 모두 서브셋 폰트 안에 있다', () => {
+    // 칸 번호는 행마다 A, B, C... 로 올라간다. 큰 도안일수록 뒤 글자까지 쓴다.
+    const labels = new Set<string>();
+    for (const dims of [
+      { widthMm: 100, heightMm: 50, depthMm: 40 },
+      { widthMm: 400, heightMm: 300, depthMm: 200 },
+    ]) {
+      for (const paper of ['a4', 'a3'] as const) {
+        for (const page of paginate(buildLayout(dims), paper).pages) {
+          for (const ch of page.gridLabel) labels.add(ch);
+        }
+      }
     }
+    expect([...labels].filter((ch) => !KOREAN_FONT_CHARS.has(ch))).toEqual([]);
+  });
+
+  it('PDF에 쓰는 모든 한국어가 서브셋 폰트 안에 있다', () => {
+    const used = new Set(
+      [...guidePageLines(layout, paginate(layout, 'a4')), SCALE_SQUARE_LABEL]
+        .join('')
+        .replace(/\s/g, ''),
+    );
+    const missing = [...used].filter((ch) => !KOREAN_FONT_CHARS.has(ch));
+    expect(missing).toEqual([]);
   });
 });
 
@@ -151,12 +180,9 @@ describe('축척 확인용 3cm 정사각형', () => {
     }
   });
 
-  it('안내 페이지가 3cm 사각형을 설명한다', () => {
-    const text = guidePageLines(layout, paginate(layout, 'a4')).join('\n');
-    expect(text).toContain('3cm');
-    expect(text).not.toContain('50mm ruler');
-    // 도안 장이 아니라 이 페이지에서 재라고 알려줘야 한다.
-    expect(text).not.toContain('each sheet');
+  it('사각형 라벨이 한국어로 3cm를 알려준다', () => {
+    expect(SCALE_SQUARE_LABEL).toContain('3cm');
+    expect(SCALE_SQUARE_LABEL).toContain('확인');
   });
 
   it('사각형을 실제로 그린다', async () => {
@@ -178,3 +204,44 @@ function pageContent(doc: PDFDocument, index: number): string {
   if (!(stream instanceof PDFRawStream)) throw new Error('콘텐츠 스트림을 찾지 못했다');
   return inflateSync(Buffer.from(stream.asUint8Array())).toString('latin1');
 }
+
+describe('안내 페이지 축소도', () => {
+  const cases: Dimensions[] = [
+    { widthMm: 150, heightMm: 90, depthMm: 50 },
+    { widthMm: 100, heightMm: 300, depthMm: 40 },   // 세로로 아주 긴 도안
+    { widthMm: 400, heightMm: 50, depthMm: 200 },   // 가로로 아주 넓은 도안
+    { widthMm: 270, heightMm: 140, depthMm: 100 },
+  ];
+
+  it('어떤 치수에서도 페이지 안에 들어간다', () => {
+    for (const dims of cases) {
+      for (const paper of ['a4', 'a3'] as const) {
+        const l = buildLayout(dims);
+        const pagination = paginate(l, paper);
+        const rect = guideThumbnailRectMm(l, pagination);
+
+        expect(rect.xMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+        expect(rect.yMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+        expect(rect.xMm + rect.widthMm).toBeLessThanOrEqual(pagination.pageWidthMm - PAGE_MARGIN_MM);
+        expect(rect.yMm + rect.heightMm).toBeLessThanOrEqual(pagination.pageHeightMm - PAGE_MARGIN_MM);
+      }
+    }
+  });
+
+  it('전개도 가로세로 비율을 지킨다', () => {
+    for (const dims of cases) {
+      const l = buildLayout(dims);
+      const rect = guideThumbnailRectMm(l, paginate(l, 'a4'));
+      expect(rect.widthMm / rect.heightMm).toBeCloseTo(l.totalWidthMm / l.totalHeightMm, 6);
+    }
+  });
+
+  it('빨간 사각형과 겹치지 않는다', () => {
+    const l = buildLayout({ widthMm: 150, heightMm: 90, depthMm: 50 });
+    const pagination = paginate(l, 'a4');
+    const thumb = guideThumbnailRectMm(l, pagination);
+    const square = scaleSquareRectMm(pagination);
+    // 사각형은 오른쪽 위, 축소도는 그 아래에서 시작해야 한다.
+    expect(thumb.yMm).toBeGreaterThanOrEqual(square.yMm + square.sizeMm);
+  });
+});

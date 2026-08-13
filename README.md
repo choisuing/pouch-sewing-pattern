@@ -35,6 +35,8 @@ npm run build    # dist/ 생성
 
 첫 장(안내 페이지) 오른쪽 위에 **빨간 3cm 정사각형**이 찍혀 나온다. 인쇄한 뒤 자로 재서 한 변이 정확히 3cm인지 확인하고, 아니면 배율을 고쳐 다시 인쇄한 뒤 재단한다. 프린터 배율은 모든 장에 똑같이 적용되므로 한 장만 재면 된다. 도안 장에는 표시가 없어 재단선과 헷갈릴 일이 없다.
 
+PDF 첫 장에는 완성 치수·도안 크기·용지 정보만 적는다. 인쇄 방법 설명은 넣지 않는다 — 빨간 3cm 사각형과 `3cm 확인하세요!` 라벨로 충분하다.
+
 도면의 선 종류:
 
 | 선 | 뜻 |
@@ -48,8 +50,24 @@ npm run build    # dist/ 생성
 ## 구조
 
 - `src/core/` — 도안 계산·타일링·PDF 생성. DOM을 참조하지 않아 Node에서도 그대로 쓸 수 있다.
+- `scripts/build-korean-font.py` — PDF용 한글 서브셋 폰트 생성기.
 - `src/ui/` — 입력 폼, 전개도 미리보기(`preview.ts`), 완성 예상 선화(`shape.ts`).
 
 `shape.ts`는 사선 투영으로 완성된 파우치를 그린다. 앞면이 `가로 × 높이` 실제 비율이고 바닥폭은 30°로 물러나므로, 치수를 넣는 즉시 납작한지 도톰한지 감이 잡힌다. 여백·글자·선 굵기는 모두 그림 폭에 비례하므로 100mm 파우치와 400mm 파우치가 같은 밀도로 보인다.
 
 의존은 `ui → core` 단방향이며, 미리보기와 PDF가 같은 계산 결과를 쓴다.
+
+## PDF 한글 폰트
+
+PDF 문구는 한국어로 나온다. pdf-lib 표준 폰트에 한글 글리프가 없어, Noto Sans KR(SIL OFL 1.1)에서 실제로 쓰는 71자만 추린 서브셋을 `src/core/korean-font.ts`에 base64로 담아 둔다. 9.6KB이고 외부에서 받아오지 않으므로 네트워크 요청은 여전히 0이다.
+
+**PDF에 쓰는 문구를 바꾸면 폰트를 다시 만들어야 한다.** 서브셋에 없는 글자는 빈칸으로 인쇄된다.
+
+```bash
+python3 -m pip install fonttools brotli
+python3 scripts/build-korean-font.py
+```
+
+`scripts/build-korean-font.py`의 `CHARS`와 `src/core/pdf.ts`의 `KOREAN_FONT_CHARS`를 함께 고친다. 빠뜨리면 `tests/pdf.test.ts`가 먼저 실패한다.
+
+서브셋에서 GPOS/GSUB를 제거하는 이유가 있다. Noto Sans KR은 CJK 폰트라 전각 기준 위치 조정이 들어 있는데, 그대로 두면 fontkit이 이를 적용해 `3cm`이 `3 cm`처럼 벌어진다.

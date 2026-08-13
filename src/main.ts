@@ -1,7 +1,6 @@
 import { PRESETS, type Preset } from './core/constants';
 import { validateDimensions } from './core/dimensions';
 import { buildLayout } from './core/layout';
-import { buildPdf } from './core/pdf';
 import { paginate, type PaperSize } from './core/tiling';
 import {
   readInputs,
@@ -81,6 +80,9 @@ async function download(): Promise<void> {
 
   downloadBtn.disabled = true;
   try {
+    // PDF 생성기는 한글 폰트와 fontkit을 끌고 와 첫 로딩을 무겁게 만든다.
+    // 버튼을 누른 뒤에 받아오면 화면은 가볍게 뜨고 기능은 그대로다.
+    const { buildPdf } = await import('./core/pdf');
     const bytes = await buildPdf(layout, pagination);
     // TS 5.7+에서 bare Uint8Array는 Uint8Array<ArrayBufferLike>로 추론되어
     // BlobPart(ArrayBufferView<ArrayBuffer>)에 그대로 대입되지 않는다.

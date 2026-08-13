@@ -1,18 +1,40 @@
-// PDF 안내 문구는 영문만 쓴다. pdf-lib 표준 폰트에 한글 글리프가 없어
-// drawText가 "WinAnsi cannot encode" 오류를 던지고, 한글 폰트를 번들하면
-// 외부 의존 0 원칙과 산출물 크기에 어긋난다. 한국어 안내는 화면(UI)에서 제공한다.
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+// PDF 문구는 한국어로 쓴다. pdf-lib 표준 폰트에는 한글 글리프가 없으므로
+// 필요한 글자만 담은 Noto Sans KR 서브셋(core/korean-font.ts)을 심어서 쓴다.
+// 서브셋에 없는 글자는 그리지 못하니, 문구를 바꿀 때는 서브셋도 다시 만들어야 한다.
+import fontkit from '@pdf-lib/fontkit';
+import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { KOREAN_FONT_BASE64 } from './korean-font';
+export { KOREAN_FONT_BASE64 };
 import { SEAM_MM } from './constants';
 import type { Layout, Line, Point } from './layout';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
 export const MM_TO_PT = 72 / 25.4;
 
+/**
+ * 서브셋 폰트가 담고 있는 글자. PDF에 찍는 문구는 전부 이 안에 있어야 한다.
+ * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
+ */
+export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
+  " !()-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm·×가기높닥도로바성세수안열완요용이인장지치크폭하행확",
+);
+
+/** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
+function decodeBase64(value: string): Uint8Array {
+  if (typeof atob === 'function') {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+  return Uint8Array.from(Buffer.from(value, 'base64'));
+}
+
 /** 축척 확인용 정사각형 한 변 (mm). 인쇄 후 자로 재는 기준. */
 export const SCALE_SQUARE_MM = 30;
 
 /** 사각형 옆에 붙는 문구. 표준 폰트가 한글을 못 그리므로 영문만 쓴다. */
-export const SCALE_SQUARE_LABEL = '3cm check!';
+export const SCALE_SQUARE_LABEL = '3cm 확인하세요!';
 
 const CUT_COLOR = rgb(0, 0, 0);
 const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
@@ -162,31 +184,54 @@ function drawScaleSquare(page: PDFPage, pagination: Pagination, font: PDFFont) {
   });
 }
 
-const GUIDE_TITLE = 'BOX POUCH PATTERN';
+const ORIENTATION_LABELS: Record<Pagination['orientation'], string> = {
+  portrait: '세로',
+  landscape: '가로',
+};
 
 /**
- * 안내 페이지 문구. pdf-lib 표준 폰트가 한글 글리프를 갖고 있지 않으므로
- * ASCII만 쓴다. 한국어 안내는 화면(UI)에서 제공한다.
+ * 안내 페이지 문구. 치수만 적는다. 인쇄 방법 설명은 넣지 않는다 —
+ * 빨간 3cm 사각형과 그 라벨만으로 배율 확인은 전달된다.
+ *
+ * 여기 쓰는 글자는 반드시 KOREAN_FONT_CHARS 안에 있어야 한다.
  */
 export function guidePageLines(layout: Layout, pagination: Pagination): readonly string[] {
   const { widthMm: W, depthMm: D, heightMm: H } = layout.dimensions;
+  const orientation = ORIENTATION_LABELS[pagination.orientation];
   return [
-    GUIDE_TITLE,
-    '',
-    `Finished  W ${W} x D ${D} x H ${H} mm`,
-    `Pattern   ${round1(layout.totalWidthMm)} x ${round1(layout.totalHeightMm)} mm`,
-    `Paper     ${pagination.paper.toUpperCase()} ${pagination.orientation} - ${pagination.pages.length} sheets (${pagination.rows} x ${pagination.cols})`,
-    '',
-    'PRINT AT 100% - do NOT use "fit to page".',
-    'Measure the red square on THIS page - it must be exactly 3cm.',
-    '',
-    `Overlap ${PAGE_OVERLAP_MM}mm - align the cross marks and tape together.`,
-    'A1 is top-left; A2 to the right, B1 below.',
-    '',
-    'Solid outline = cut line. Seam allowance is already included.',
-    `Fine dashed inner line = stitch line (${SEAM_MM}mm seam allowance).`,
-    'Grey dashed line = fold line.',
+    `완성 치수   가로 ${W} · 높이 ${H} · 바닥폭 ${D}mm`,
+    `도안 크기   ${round1(layout.totalWidthMm)} × ${round1(layout.totalHeightMm)}mm`,
+    `용지        ${pagination.paper.toUpperCase()} ${orientation} ${pagination.pages.length}장 (${pagination.cols}열 × ${pagination.rows}행)`,
   ];
+}
+
+/** 축소도가 시작하는 y. 치수 세 줄과 빨간 사각형 아래에서 시작한다. */
+const THUMBNAIL_TOP_MM = PAGE_MARGIN_MM + 8 + SCALE_SQUARE_MM + 10;
+
+/**
+ * 안내 페이지 아래쪽 전체 배치 축소도의 자리 (mm).
+ * 폭만 보고 배율을 정하면 세로로 긴 도안에서 페이지 밖으로 넘친다.
+ * 가로·세로 중 더 빡빡한 쪽에 맞추고 비율은 그대로 둔다.
+ */
+export function guideThumbnailRectMm(
+  layout: Layout,
+  pagination: Pagination,
+): { xMm: number; yMm: number; widthMm: number; heightMm: number } {
+  const leftMm = PAGE_MARGIN_MM + 6;
+  const availableWidthMm = pagination.pageWidthMm - 2 * leftMm;
+  const availableHeightMm = pagination.pageHeightMm - THUMBNAIL_TOP_MM - PAGE_MARGIN_MM;
+
+  const scale = Math.min(
+    availableWidthMm / layout.totalWidthMm,
+    availableHeightMm / layout.totalHeightMm,
+  );
+
+  return {
+    xMm: leftMm,
+    yMm: THUMBNAIL_TOP_MM,
+    widthMm: layout.totalWidthMm * scale,
+    heightMm: layout.totalHeightMm * scale,
+  };
 }
 
 function drawGuidePage(
@@ -209,20 +254,20 @@ function drawGuidePage(
     page.drawText(line, {
       x: point.x,
       y: point.y,
-      size: line === GUIDE_TITLE ? 16 : 10,
+      size: 11,
       font,
       color: CUT_COLOR,
     });
-    yMm += line === '' ? 4 : 7;
+    yMm += 8;
   }
 
   // 전체 배치 축소도 — 페이지 격자와 전개도 외곽선
-  const availableWidthMm = pagination.pageWidthMm - 2 * (PAGE_MARGIN_MM + 6);
-  const scale = availableWidthMm / layout.totalWidthMm;
-  const originYMm = yMm + 8;
+  const thumbnail = guideThumbnailRectMm(layout, pagination);
+  const scale = thumbnail.widthMm / layout.totalWidthMm;
+  const originYMm = thumbnail.yMm;
 
   for (const tile of pagination.pages) {
-    const rectXMm = PAGE_MARGIN_MM + 6 + tile.originXMm * scale;
+    const rectXMm = thumbnail.xMm + tile.originXMm * scale;
     const wMm = Math.min(pagination.contentWidthMm, layout.totalWidthMm - tile.originXMm) * scale;
     const hMm = Math.min(pagination.contentHeightMm, layout.totalHeightMm - tile.originYMm) * scale;
     const yTopMm = originYMm + tile.originYMm * scale;
@@ -249,8 +294,8 @@ function drawGuidePage(
     const a = layout.outlineMm[i]!;
     const b = layout.outlineMm[(i + 1) % layout.outlineMm.length]!;
     page.drawLine({
-      start: toFramePoint(pagination, PAGE_MARGIN_MM + 6 + a.xMm * scale, originYMm + a.yMm * scale),
-      end: toFramePoint(pagination, PAGE_MARGIN_MM + 6 + b.xMm * scale, originYMm + b.yMm * scale),
+      start: toFramePoint(pagination, thumbnail.xMm + a.xMm * scale, originYMm + a.yMm * scale),
+      end: toFramePoint(pagination, thumbnail.xMm + b.xMm * scale, originYMm + b.yMm * scale),
       thickness: 0.8,
       color: CUT_COLOR,
     });
@@ -263,7 +308,8 @@ function round1(value: number): number {
 
 export async function buildPdf(layout: Layout, pagination: Pagination): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
+  doc.registerFontkit(fontkit);
+  const font = await doc.embedFont(decodeBase64(KOREAN_FONT_BASE64));
 
   drawGuidePage(doc, layout, pagination, font);
 
