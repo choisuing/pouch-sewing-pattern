@@ -1,8 +1,35 @@
+/*
+ * 색은 모두 대비를 계산해 고른 값이다. 바꿀 때는 아래 기준을 다시 확인할 것.
+ *   본문/보조 텍스트 4.5:1 이상, 입력칸 테두리 3:1 이상 (WCAG 1.4.11).
+ * 구분선(--line)은 장식용이라 대비 기준을 적용하지 않는다.
+ */
 :root {
-  --line: #e2e4ea;
-  --text: #222;
-  --muted: #666;
-  --accent: #2f6fed;
+  --bg: #fbf7f0;          /* 따뜻한 종이색 */
+  --surface: #ffffff;
+  --text: #2b2118;        /* 카드 위 15.75:1 */
+  --muted: #6e6055;       /* 카드 위 6.06:1 */
+  --accent: #c2410c;      /* 테라코타, 흰 글자 위 5.18:1 */
+  --accent-hover: #9a3412;
+  --info: #0e7490;        /* 카드 위 5.36:1 */
+  --danger: #b42318;      /* 카드 위 6.57:1 */
+  --field-line: #a18e73;  /* 입력칸 테두리, 흰 배경 위 3.17:1 */
+  --line: #e7ded0;        /* 장식용 구분선 */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  /* 최소 터치 타깃. 이보다 작은 조작 요소를 만들지 말 것. */
+  --tap: 44px;
+
+  --speed: 180ms;
+
   color-scheme: light;
 }
 
@@ -12,88 +39,219 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
   color: var(--text);
-  background: #f6f7f9;
+  background: var(--bg);
+  line-height: 1.6;
 }
 
-.page { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
-.head h1 { font-size: 24px; margin: 0 0 4px; }
-.sub { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+/* 키보드 사용자에게만 또렷한 링을 보여준다. 마우스 클릭에는 뜨지 않는다. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) 64px;
+}
+
+.head h1 {
+  font-size: 26px;
+  line-height: 1.35;
+  margin: 0 0 var(--space-2);
+  letter-spacing: -0.01em;
+}
+.sub {
+  margin: 0 0 var(--space-5);
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 60ch;
+}
+
+/* 좁은 화면에서는 한 컬럼으로 쌓고, 넓어지면 입력 | 결과 두 칸으로 나눈다. */
+.workspace {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .workspace {
+    grid-template-columns: 380px minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-5);
+  }
+  /* 결과를 훑는 동안에도 치수를 고칠 수 있도록 붙여 둔다. */
+  .panel-input {
+    position: sticky;
+    top: var(--space-5);
+  }
+}
 
 .card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
 }
 
-.label { font-size: 14px; margin: 20px 0 8px; }
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  margin: var(--space-5) 0 var(--space-3);
+}
 .label:first-child { margin-top: 0; }
 
-.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 프리셋 */
+.presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .preset {
+  min-height: var(--tap);
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
+  color: var(--text);
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
   font-size: 13px;
   cursor: pointer;
+  transition: border-color var(--speed), background-color var(--speed), color var(--speed);
 }
-.preset:hover { border-color: var(--accent); color: var(--accent); }
+.preset:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #fdf5f0;
+}
 
-.inputs { display: grid; gap: 10px; }
-.input-row { display: grid; grid-template-columns: 110px 1fr 80px; gap: 10px; align-items: center; }
-.input-name { font-size: 14px; }
+/* 치수 입력 */
+.inputs { display: grid; gap: var(--space-3); }
+/*
+ * 세 자리 숫자를 넣는 칸이라 넓어질 이유가 없다. 200px에서 멈추고
+ * 남는 공간은 비워 둔다 (justify-content: start).
+ */
+.input-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 200px) auto;
+  justify-content: start;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* 아주 좁은 화면에서는 단위 안내를 입력칸 아래로 내려 폭을 확보한다. */
+@media (max-width: 400px) {
+  .input-row {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: var(--space-1) var(--space-3);
+  }
+  .input-hint { grid-column: 2; }
+}
+.input-name { font-size: 14px; font-weight: 600; }
 .input-row input {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 15px;
+  min-height: 48px;
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: 16px;   /* 16px 미만이면 iOS가 확대한다 */
   width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--speed), box-shadow var(--speed);
 }
-.input-hint { font-size: 12px; color: var(--muted); }
+.input-row input:hover { border-color: var(--accent); }
+/*
+ * outline을 지우지 않는다. 고대비 모드에서는 box-shadow가 무시되므로,
+ * 그림자만 남기면 포커스가 통째로 사라진다. 그림자는 거들 뿐이고
+ * 실제 포커스 표시는 위쪽 :focus-visible 규칙의 outline이 담당한다.
+ */
+.input-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.14);
+}
+.input-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
 
-.error { color: #c0392b; font-size: 13px; margin: 10px 0 0; }
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: #fdf3f2;
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
 
+/* 용지 선택 — 라벨 전체가 클릭 대상이 되도록 키운다 */
+.papers { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.paper-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color var(--speed), background-color var(--speed);
+}
+.paper-option:hover { border-color: var(--accent); }
+.paper-option:has(input:checked) {
+  border-color: var(--accent);
+  background: #fdf5f0;
+}
+.paper-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.paper-count { color: var(--muted); font-size: 13px; }
+
+/* 결과 */
+.shape,
 .preview {
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 28px;
+  border-radius: var(--radius);
+  padding: var(--space-4);
   display: flex;
   justify-content: center;
-  background: #fafbfc;
+  background: var(--bg);
+}
+.shape svg { max-width: 100%; max-height: 260px; height: auto; }
+.preview {
+  padding: var(--space-6) var(--space-5);
   min-height: 200px;
 }
 .preview svg { max-width: 100%; height: auto; }
 
-.shape {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  justify-content: center;
-  background: #fafbfc;
-}
-.shape svg { max-width: 100%; max-height: 260px; height: auto; }
-
 .preview-summary {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 700;
+  color: var(--info);
 }
 
 .legend {
   list-style: none;
-  margin: 10px 0 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: 12px;
   color: var(--muted);
 }
-.legend li { display: flex; align-items: center; gap: 8px; }
+.legend li { display: flex; align-items: center; gap: var(--space-2); }
 
-.swatch { flex: none; width: 26px; height: 0; border-top-width: 2px; }
+.swatch { flex: none; width: 26px; height: 0; }
 .swatch-cut { border-top: 2px solid #222; }
 .swatch-seam { border-top: 2px dashed #b98a4b; }
 .swatch-fold { border-top: 2px dashed #888; }
@@ -105,32 +263,34 @@ body {
   background: rgba(240, 224, 196, 0.55);
 }
 
-.papers { display: flex; gap: 16px; }
-.paper-option { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
-.paper-count { color: var(--muted); font-size: 13px; }
-
+/* 내려받기 */
 .download {
-  margin-top: 24px;
+  margin-top: var(--space-5);
   width: 100%;
+  min-height: 52px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--accent);
   color: #fff;
-  padding: 14px;
+  padding: var(--space-3);
+  font: inherit;
   font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background-color var(--speed);
 }
-.download:disabled { background: #b9c2d4; cursor: not-allowed; }
+.download:hover:not(:disabled) { background: var(--accent-hover); }
+.download:disabled { background: #c9beb1; cursor: not-allowed; }
 
 .print-check {
-  margin: 12px 0 0;
-  padding: 12px 14px;
-  border: 1px solid #f0c6c6;
-  border-left: 4px solid #d92020;
-  border-radius: 8px;
-  background: #fdf5f5;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid #f0d5cd;
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius);
+  background: #fdf6f4;
   font-size: 13px;
   line-height: 1.7;
-  color: #444;
+  color: var(--text);
 }
-.print-check strong { color: #d92020; }
+.print-check strong { color: var(--danger); }

@@ -15,38 +15,44 @@
         </p>
       </header>
 
-      <section class="card">
-        <h2 class="label">자주 쓰는 크기</h2>
-        <div class="presets" id="presets"></div>
+      <div class="workspace">
+        <!-- 왼쪽: 입력과 내려받기. 넓은 화면에서는 스크롤을 따라 붙는다. -->
+        <section class="card panel-input" aria-label="치수 입력">
+          <h2 class="label">자주 쓰는 크기</h2>
+          <div class="presets" id="presets"></div>
 
-        <h2 class="label">완성 치수 (mm)</h2>
-        <div class="inputs" id="inputs"></div>
-        <p class="error" id="error" hidden></p>
+          <h2 class="label">완성 치수 (mm)</h2>
+          <div class="inputs" id="inputs"></div>
+          <p class="error" id="error" hidden></p>
 
-        <h2 class="label">완성 예상 모습</h2>
-        <div class="shape" id="shape"></div>
+          <h2 class="label">용지</h2>
+          <div class="papers" id="papers"></div>
 
-        <h2 class="label">전개도 미리보기</h2>
-        <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
-        <div class="preview" id="preview"></div>
-        <ul class="legend">
-          <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
-          <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
-          <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
-          <li><span class="swatch swatch-fold"></span>접힘선 — 접어서 옆면·바닥을 만듭니다</li>
-          <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
-        </ul>
+          <button type="button" id="download" class="download">패턴 PDF 다운로드</button>
+          <p class="print-check">
+            <strong>3cm 체크해보세요!</strong>
+            PDF 첫 장(안내 페이지) 오른쪽 위에 빨간 정사각형이 있습니다. 인쇄한 뒤 자로 재서 한 변이 3cm면 배율이 맞은 것입니다.
+            3cm가 아니면 &ldquo;페이지에 맞춤&rdquo;을 끄고 배율 100%로 다시 인쇄하세요.
+          </p>
+        </section>
 
-        <h2 class="label">용지</h2>
-        <div class="papers" id="papers"></div>
+        <!-- 오른쪽: 입력에 따라 즉시 갱신되는 결과 -->
+        <section class="card panel-result" aria-label="미리보기">
+          <h2 class="label">완성 예상 모습</h2>
+          <div class="shape" id="shape"></div>
 
-        <button type="button" id="download" class="download">패턴 PDF 다운로드</button>
-        <p class="print-check">
-          <strong>3cm 체크해보세요!</strong>
-          PDF 첫 장(안내 페이지) 오른쪽 위에 빨간 정사각형이 있습니다. 인쇄한 뒤 자로 재서 한 변이 3cm면 배율이 맞은 것입니다.
-          3cm가 아니면 &ldquo;페이지에 맞춤&rdquo;을 끄고 배율 100%로 다시 인쇄하세요.
-        </p>
-      </section>
+          <h2 class="label">전개도 미리보기</h2>
+          <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
+          <div class="preview" id="preview"></div>
+          <ul class="legend">
+            <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
+            <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
+            <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
+            <li><span class="swatch swatch-fold"></span>접힘선 — 접어서 옆면·바닥을 만듭니다</li>
+            <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
+          </ul>
+        </section>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
