@@ -8,13 +8,17 @@ import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './t
 
 export const MM_TO_PT = 72 / 25.4;
 
-/** 축척 검증용 눈금자 길이 (mm) */
-export const RULER_LENGTH_MM = 50;
+/** 축척 확인용 정사각형 한 변 (mm). 인쇄 후 자로 재는 기준. */
+export const SCALE_SQUARE_MM = 30;
+
+/** 사각형 옆에 붙는 문구. 표준 폰트가 한글을 못 그리므로 영문만 쓴다. */
+export const SCALE_SQUARE_LABEL = '3cm check!';
 
 const CUT_COLOR = rgb(0, 0, 0);
 const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
 const MARK_COLOR = rgb(0.2, 0.2, 0.2);
 const SEAM_COLOR = rgb(0.3, 0.3, 0.3);
+const SCALE_COLOR = rgb(0.85, 0.1, 0.1);
 
 interface PageContext {
   readonly pdfPage: PDFPage;
@@ -116,34 +120,46 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
   });
 }
 
-function drawRuler(ctx: PageContext, font: PDFFont) {
-  const { pagination } = ctx;
-  const startXMm = PAGE_MARGIN_MM + 4;
-  const yMm = pagination.pageHeightMm - PAGE_MARGIN_MM - 4;
-  const start = toFramePoint(pagination, startXMm, yMm);
-  const end = toFramePoint(pagination, startXMm + RULER_LENGTH_MM, yMm);
+/**
+ * 축척 확인용 사각형의 위치와 크기 (mm). 인쇄 영역 왼쪽 아래에 놓는다.
+ * 좌상단은 격자 라벨이 쓰고 있어 피한다.
+ */
+export function scaleSquareRectMm(pagination: Pagination): {
+  xMm: number;
+  yMm: number;
+  sizeMm: number;
+} {
+  return {
+    xMm: PAGE_MARGIN_MM + 4,
+    yMm: pagination.pageHeightMm - PAGE_MARGIN_MM - 4 - SCALE_SQUARE_MM,
+    sizeMm: SCALE_SQUARE_MM,
+  };
+}
 
-  ctx.pdfPage.drawLine({
-    start,
-    end,
-    thickness: 1,
-    color: MARK_COLOR,
+/**
+ * 배율 100%로 인쇄됐는지 자로 확인하는 사각형. 도면 선과 헷갈리지 않도록
+ * 빨간색으로만 그린다.
+ */
+function drawScaleSquare(ctx: PageContext, font: PDFFont) {
+  const { pagination } = ctx;
+  const rect = scaleSquareRectMm(pagination);
+  const topLeft = toFramePoint(pagination, rect.xMm, rect.yMm);
+
+  ctx.pdfPage.drawRectangle({
+    x: topLeft.x,
+    y: topLeft.y - rect.sizeMm * MM_TO_PT,
+    width: rect.sizeMm * MM_TO_PT,
+    height: rect.sizeMm * MM_TO_PT,
+    borderColor: SCALE_COLOR,
+    borderWidth: 1,
   });
-  for (const tickXMm of [startXMm, startXMm + RULER_LENGTH_MM]) {
-    const tickStart = toFramePoint(pagination, tickXMm, yMm);
-    ctx.pdfPage.drawLine({
-      start: tickStart,
-      end: { x: tickStart.x, y: tickStart.y + 3 * MM_TO_PT },
-      thickness: 1,
-      color: MARK_COLOR,
-    });
-  }
-  ctx.pdfPage.drawText(`${RULER_LENGTH_MM}mm`, {
-    x: (startXMm + RULER_LENGTH_MM + 3) * MM_TO_PT,
-    y: start.y - 1,
-    size: 8,
+
+  ctx.pdfPage.drawText(SCALE_SQUARE_LABEL, {
+    x: (rect.xMm + rect.sizeMm + 3) * MM_TO_PT,
+    y: topLeft.y - rect.sizeMm * MM_TO_PT + 2,
+    size: 9,
     font,
-    color: MARK_COLOR,
+    color: SCALE_COLOR,
   });
 }
 
@@ -163,7 +179,7 @@ export function guidePageLines(layout: Layout, pagination: Pagination): readonly
     `Paper     ${pagination.paper.toUpperCase()} ${pagination.orientation} - ${pagination.pages.length} sheets (${pagination.rows} x ${pagination.cols})`,
     '',
     'PRINT AT 100% - do NOT use "fit to page".',
-    `Check the ${RULER_LENGTH_MM}mm ruler on each sheet with a real ruler.`,
+    'Measure the red square on each sheet - it must be exactly 3cm.',
     '',
     `Overlap ${PAGE_OVERLAP_MM}mm - align the cross marks and tape together.`,
     'A1 is top-left; A2 to the right, B1 below.',
@@ -271,7 +287,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     }
 
     drawAlignmentMarks(ctx, font);
-    drawRuler(ctx, font);
+    drawScaleSquare(ctx, font);
   }
 
   return doc.save();

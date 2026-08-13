@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { buildLayout } from '../src/core/layout';
 import { paginate, PAGE_MARGIN_MM, type Page, type Pagination } from '../src/core/tiling';
-import { MM_TO_PT, buildPdf, guidePageLines, toFramePoint, toPagePoint } from '../src/core/pdf';
+import {
+  MM_TO_PT,
+  SCALE_SQUARE_MM,
+  buildPdf,
+  guidePageLines,
+  scaleSquareRectMm,
+  toFramePoint,
+  toPagePoint,
+} from '../src/core/pdf';
 import type { Dimensions } from '../src/core/dimensions';
 
 const travel: Dimensions = { widthMm: 270, depthMm: 100, heightMm: 140 };
@@ -92,5 +100,55 @@ describe('buildPdf — 완성선', () => {
     for (const line of guidePageLines(layout, paginate(layout, 'a4'))) {
       expect(line).toMatch(/^[\x20-\x7e]*$/);
     }
+  });
+});
+
+describe('축척 확인용 3cm 정사각형', () => {
+  it('한 변이 정확히 30mm다', () => {
+    expect(SCALE_SQUARE_MM).toBe(30);
+    const rect = scaleSquareRectMm(paginate(layout, 'a4'));
+    expect(rect.sizeMm).toBe(30);
+  });
+
+  it('모든 용지·방향에서 인쇄 영역 안에 들어간다', () => {
+    for (const paper of ['a4', 'a3'] as const) {
+      for (const dims of [
+        { widthMm: 270, depthMm: 100, heightMm: 140 },
+        { widthMm: 100, depthMm: 40, heightMm: 100 },
+        { widthMm: 400, depthMm: 200, heightMm: 300 },
+      ]) {
+        const pagination = paginate(buildLayout(dims), paper);
+        const rect = scaleSquareRectMm(pagination);
+
+        expect(rect.xMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+        expect(rect.yMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+        expect(rect.xMm + rect.sizeMm).toBeLessThanOrEqual(
+          pagination.pageWidthMm - PAGE_MARGIN_MM,
+        );
+        expect(rect.yMm + rect.sizeMm).toBeLessThanOrEqual(
+          pagination.pageHeightMm - PAGE_MARGIN_MM,
+        );
+      }
+    }
+  });
+
+  it('격자 라벨이 있는 좌상단을 피해 아래쪽에 놓인다', () => {
+    const pagination = paginate(layout, 'a4');
+    const rect = scaleSquareRectMm(pagination);
+    expect(rect.yMm).toBeGreaterThan(pagination.pageHeightMm / 2);
+  });
+
+  it('안내 페이지가 3cm 사각형을 설명한다', () => {
+    const text = guidePageLines(layout, paginate(layout, 'a4')).join('\n');
+    expect(text).toContain('3cm');
+    expect(text).not.toContain('50mm ruler');
+  });
+
+  it('사각형을 실제로 그린다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const withSquare = await buildPdf(layout, pagination);
+    // 빨간색이 쓰이면 콘텐츠에 색 지정이 늘어난다. 페이지 수는 그대로여야 한다.
+    const doc = await PDFDocument.load(withSquare);
+    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
   });
 });

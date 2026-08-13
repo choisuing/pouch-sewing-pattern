@@ -121,3 +121,16 @@ body {
   cursor: pointer;
 }
 .download:disabled { background: #b9c2d4; cursor: not-allowed; }
+
+.print-check {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #f0c6c6;
+  border-left: 4px solid #d92020;
+  border-radius: 8px;
+  background: #fdf5f5;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #444;
+}
+.print-check strong { color: #d92020; }
