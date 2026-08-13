@@ -12,6 +12,7 @@ import {
   writeInputs,
 } from './ui/form';
 import { describePagination, renderPreviewSvg } from './ui/preview';
+import { renderShapeSvg } from './ui/shape';
 import './style.css';
 
 const PAGE_WARN_THRESHOLD = 20;
@@ -20,6 +21,7 @@ const presetsEl = document.getElementById('presets')!;
 const inputsEl = document.getElementById('inputs')!;
 const papersEl = document.getElementById('papers')!;
 const previewEl = document.getElementById('preview')!;
+const shapeEl = document.getElementById('shape')!;
 const summaryEl = document.getElementById('preview-summary')!;
 const errorEl = document.getElementById('error')!;
 const downloadBtn = document.getElementById('download') as HTMLButtonElement;
@@ -42,6 +44,7 @@ function refresh(): void {
   if (!result.ok) {
     showError(result.errors.map((e) => e.message));
     previewEl.innerHTML = '';
+    shapeEl.innerHTML = '';
     summaryEl.textContent = '';
     downloadBtn.disabled = true;
     setPaperCount('a4', null);
@@ -50,6 +53,8 @@ function refresh(): void {
   }
 
   showError([]);
+  shapeEl.innerHTML = renderShapeSvg(result.value);
+
   const layout = buildLayout(result.value);
   const pagination = paginate(layout, paper);
   previewEl.innerHTML = renderPreviewSvg(layout, pagination);
@@ -106,5 +111,6 @@ renderPaperOptions(papersEl, paper, (next) => {
 });
 downloadBtn.addEventListener('click', () => void download());
 
-writeInputs(PRESETS[2]!);
+// 첫 화면은 첫 번째 프리셋으로 채운다.
+writeInputs(PRESETS[0]!);
 refresh();

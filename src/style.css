@@ -65,6 +65,16 @@ body {
 }
 .preview svg { max-width: 100%; height: auto; }
 
+.shape {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  background: #fafbfc;
+}
+.shape svg { max-width: 100%; max-height: 260px; height: auto; }
+
 .preview-summary {
   margin: 0 0 8px;
   font-size: 13px;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout } from '../src/core/layout';
-import { SEAM_MM } from '../src/core/constants';
+import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
 const travel: Dimensions = { widthMm: 270, depthMm: 100, heightMm: 140 };
@@ -204,3 +204,24 @@ function shoelaceArea(points: readonly { xMm: number; yMm: number }[]): number {
   }
   return Math.abs(sum) / 2;
 }
+
+describe('buildLayout — 입력 범위 하한', () => {
+  // 이 테스트는 RANGES를 직접 읽으므로, 앞으로 최소값을 더 낮추면 여기서 걸린다.
+  it('허용 최소 치수에서도 완성선이 무너지지 않는다', () => {
+    const layout = buildLayout({
+      widthMm: RANGES.widthMm.min,
+      depthMm: RANGES.depthMm.min,
+      heightMm: RANGES.heightMm.min,
+    });
+
+    // 앞판은 위아래로 시접만큼 깎이므로, 시접 두 배보다 높아야 완성선이 남는다.
+    const front = layout.bands.find((b) => b.id === 'front')!;
+    expect(front.heightMm).toBeGreaterThan(2 * SEAM_MM);
+
+    // 지퍼단도 마찬가지.
+    const topFront = layout.bands.find((b) => b.id === 'topFront')!;
+    expect(topFront.heightMm).toBeGreaterThan(2 * SEAM_MM);
+
+    expect(shoelaceArea(layout.seamLineMm)).toBeGreaterThan(0);
+  });
+});

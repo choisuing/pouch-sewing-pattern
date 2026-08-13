@@ -11,10 +11,15 @@ export interface Range {
   readonly max: number;
 }
 
+/**
+ * 높이 최소값은 `4 × SEAM_MM`(=40)보다 커야 한다. 앞판 높이가 `H − 2S`이고
+ * 거기서 완성선이 위아래로 다시 `S`씩 들어가므로, 40 이하가 되면 완성선이
+ * 무너진다. tests/layout.test.ts의 "허용 최소 치수" 테스트가 이를 지킨다.
+ */
 export const RANGES: Record<DimensionField, Range> = {
   widthMm: { min: 100, max: 400 },
   depthMm: { min: 40, max: 200 },
-  heightMm: { min: 60, max: 300 },
+  heightMm: { min: 50, max: 300 },
 };
 
 export const FIELD_LABELS: Record<DimensionField, string> = {
@@ -32,7 +37,7 @@ export interface Preset {
 }
 
 export const PRESETS: readonly Preset[] = [
-  { id: 'pencil', label: '필통', widthMm: 200, depthMm: 60, heightMm: 60 },
-  { id: 'cosmetic', label: '화장품 파우치', widthMm: 220, depthMm: 90, heightMm: 130 },
-  { id: 'travel', label: '여행 파우치', widthMm: 270, depthMm: 100, heightMm: 140 },
+  { id: 'cosmetic', label: '화장품 파우치', widthMm: 150, heightMm: 90, depthMm: 50 },
+  { id: 'sanitary', label: '생리대 파우치', widthMm: 120, heightMm: 70, depthMm: 70 },
+  { id: 'pencil', label: '필통', widthMm: 200, heightMm: 50, depthMm: 50 },
 ];
