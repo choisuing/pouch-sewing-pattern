@@ -1,4 +1,4 @@
-import { FIELD_LABELS, RANGES, type DimensionField } from './constants';
+import { DIMENSION_ORDER, FIELD_LABELS, RANGES, type DimensionField } from './constants';
 
 export interface Dimensions {
   readonly widthMm: number;
@@ -15,13 +15,11 @@ export type ValidationResult =
   | { readonly ok: true; readonly value: Dimensions }
   | { readonly ok: false; readonly errors: readonly FieldError[] };
 
-const FIELDS: readonly DimensionField[] = ['widthMm', 'depthMm', 'heightMm'];
-
 export function validateDimensions(input: Record<DimensionField, unknown>): ValidationResult {
   const errors: FieldError[] = [];
   const values = {} as Record<DimensionField, number>;
 
-  for (const field of FIELDS) {
+  for (const field of DIMENSION_ORDER) {
     const raw = input[field];
     const { min, max } = RANGES[field];
     const label = FIELD_LABELS[field];

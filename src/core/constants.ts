@@ -6,6 +6,12 @@ export const ZIPPER_ALLOWANCE_MM = 10;
 
 export type DimensionField = 'widthMm' | 'depthMm' | 'heightMm';
 
+/**
+ * 치수를 사람에게 보여주는 순서. 입력칸 배치, 프리셋 표기, 오류 메시지가
+ * 모두 이 순서를 따른다. 순서를 바꾸려면 여기만 고친다.
+ */
+export const DIMENSION_ORDER: readonly DimensionField[] = ['widthMm', 'heightMm', 'depthMm'];
+
 export interface Range {
   readonly min: number;
   readonly max: number;

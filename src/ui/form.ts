@@ -1,7 +1,18 @@
-import { FIELD_LABELS, PRESETS, RANGES, type DimensionField, type Preset } from '../core/constants';
-import type { PaperSize } from '../core/tiling';
+import {
+  DIMENSION_ORDER,
+  FIELD_LABELS,
+  PRESETS,
+  RANGES,
+  type DimensionField,
+  type Preset,
+} from '../core/constants';
 
-const FIELDS: readonly DimensionField[] = ['widthMm', 'depthMm', 'heightMm'];
+/** 프리셋 버튼에 적을 문구. 치수는 DIMENSION_ORDER 순으로 늘어놓는다. */
+export function formatPresetLabel(preset: Preset): string {
+  const sizes = DIMENSION_ORDER.map((field) => preset[field]).join('×');
+  return `${preset.label} ${sizes}`;
+}
+import type { PaperSize } from '../core/tiling';
 
 export function renderPresetButtons(container: HTMLElement, onPick: (preset: Preset) => void): void {
   container.innerHTML = '';
@@ -9,7 +20,7 @@ export function renderPresetButtons(container: HTMLElement, onPick: (preset: Pre
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'preset';
-    button.textContent = `${preset.label} ${preset.widthMm}×${preset.depthMm}×${preset.heightMm}`;
+    button.textContent = formatPresetLabel(preset);
     button.addEventListener('click', () => onPick(preset));
     container.append(button);
   }
@@ -17,7 +28,7 @@ export function renderPresetButtons(container: HTMLElement, onPick: (preset: Pre
 
 export function renderInputs(container: HTMLElement, onChange: () => void): void {
   container.innerHTML = '';
-  for (const field of FIELDS) {
+  for (const field of DIMENSION_ORDER) {
     const { min, max } = RANGES[field];
     const wrapper = document.createElement('label');
     wrapper.className = 'input-row';
@@ -75,7 +86,7 @@ export function renderPaperOptions(
 
 export function readInputs(): Record<DimensionField, unknown> {
   const values = {} as Record<DimensionField, unknown>;
-  for (const field of FIELDS) {
+  for (const field of DIMENSION_ORDER) {
     const input = document.getElementById(`field-${field}`) as HTMLInputElement | null;
     values[field] = input?.value ?? '';
   }
@@ -83,7 +94,7 @@ export function readInputs(): Record<DimensionField, unknown> {
 }
 
 export function writeInputs(preset: Preset): void {
-  for (const field of FIELDS) {
+  for (const field of DIMENSION_ORDER) {
     const input = document.getElementById(`field-${field}`) as HTMLInputElement | null;
     if (input) input.value = String(preset[field]);
   }
