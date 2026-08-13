@@ -1,0 +1,85 @@
+:root {
+  --line: #e2e4ea;
+  --text: #222;
+  --muted: #666;
+  --accent: #2f6fed;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: #f6f7f9;
+}
+
+.page { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+.head h1 { font-size: 24px; margin: 0 0 4px; }
+.sub { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.label { font-size: 14px; margin: 20px 0 8px; }
+.label:first-child { margin-top: 0; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.preset {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.preset:hover { border-color: var(--accent); color: var(--accent); }
+
+.inputs { display: grid; gap: 10px; }
+.input-row { display: grid; grid-template-columns: 110px 1fr 80px; gap: 10px; align-items: center; }
+.input-name { font-size: 14px; }
+.input-row input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 15px;
+  width: 100%;
+}
+.input-hint { font-size: 12px; color: var(--muted); }
+
+.error { color: #c0392b; font-size: 13px; margin: 10px 0 0; }
+
+.preview {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 28px;
+  display: flex;
+  justify-content: center;
+  background: #fafbfc;
+  min-height: 200px;
+}
+.preview svg { max-width: 100%; height: auto; }
+
+.note { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 8px 0 0; }
+
+.papers { display: flex; gap: 16px; }
+.paper-option { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.paper-count { color: var(--muted); font-size: 13px; }
+
+.download {
+  margin-top: 24px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 14px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.download:disabled { background: #b9c2d4; cursor: not-allowed; }
