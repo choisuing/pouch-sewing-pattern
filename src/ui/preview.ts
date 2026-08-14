@@ -113,10 +113,12 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     ` style="overflow: visible; max-width: 100%; height: auto;" role="img"`,
     ` aria-label="${escapeXml(`가로 ${round1(w)}mm, 세로 ${round1(h)}mm 전개도 미리보기`)}">`,
     `<g transform="translate(0,0)">`,
-    tiles,
     `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="${cutStroke}" />`,
     seamBand,
     seamLine,
+    // 페이지 경계는 도안 위에 얹어야 보인다. 도안 채움이 불투명해서
+    // 먼저 그리면 가운데가 덮이고 밖으로 나온 끝부분만 남는다.
+    tiles,
     tileLabels,
     labels,
     dims,

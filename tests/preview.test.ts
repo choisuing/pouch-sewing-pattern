@@ -151,3 +151,25 @@ describe('renderPreviewSvg — 선 두께와 글자 크기', () => {
     expect(size(svgB) / viewW(svgB)).toBeCloseTo(size(svgA) / viewW(svgA), 3);
   });
 });
+
+describe('renderPreviewSvg — 페이지 경계선이 도안 위에 보인다', () => {
+  it('도안 채움보다 나중에 그린다', () => {
+    // 도안 채움(#fffdf5)은 불투명하다. 타일을 먼저 그리면 가운데가 덮여
+    // 경계선이 도안 밖 끝부분만 보인다.
+    const tile = svg.indexOf('class="page-tile"');
+    const fill = svg.indexOf('<polygon points=');
+    expect(tile).toBeGreaterThan(fill);
+  });
+
+  it('두 페이지가 만나는 자리에 세로 경계선이 있다', () => {
+    const wide = buildLayout({ widthMm: 200, heightMm: 50, depthMm: 50 });
+    const p = paginate(wide, 'a4');
+    expect(p.cols).toBe(2);
+    const svgWide = renderPreviewSvg(wide, p);
+    const xs = [...svgWide.matchAll(/class="page-tile" x="([\d.]+)"[^>]*width="([\d.]+)"/g)]
+      .map((m) => Number(m[1]) + Number(m[2]));
+    // 첫 페이지의 오른쪽 끝이 도안 한가운데 어딘가에 있어야 한다.
+    expect(xs[0]).toBeGreaterThan(0);
+    expect(xs[0]).toBeLessThan(wide.totalWidthMm);
+  });
+});

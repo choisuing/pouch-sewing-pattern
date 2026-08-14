@@ -100,12 +100,26 @@ body {
 
 .section-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 .section-row .section { margin-bottom: 0; }
+
+.section-lead { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-3); }
+
+/* 용지 선택과 내려받기를 패턴 머리줄 오른쪽에 나란히 둔다. */
+.pattern-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.paper-field { display: flex; align-items: center; gap: var(--space-2); }
+.paper-label { font-size: 13px; color: var(--muted); }
+.download-field { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
 
 /* 좁은 화면에서는 한 컬럼으로 쌓고, 넓어지면 입력 | 미리보기 두 칸으로 나눈다. */
 .workspace {
@@ -215,10 +229,10 @@ body {
   align-items: center;
   gap: var(--space-2);
   min-height: var(--tap);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: border-color var(--speed), background-color var(--speed);
 }
@@ -267,17 +281,16 @@ body {
 
 /* 내려받기 */
 .download {
-  margin-top: var(--space-5);
-  width: 100%;
-  min-height: 52px;
+  min-height: var(--tap);
   border: 0;
   border-radius: var(--radius);
   background: var(--accent);
   color: #fff;
-  padding: var(--space-3);
+  padding: 0 var(--space-5);
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--speed);
 }
@@ -285,8 +298,16 @@ body {
 .download:disabled { background: #c9beb1; cursor: not-allowed; }
 
 .print-check {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--danger);
+}
+
+/*
+ * 마우스를 쓰는 화면에서만 조작 요소를 더 줄인다. 손가락으로 누르는
+ * 화면에서는 44px을 지킨다 — 그보다 작으면 정확히 누르기 어렵다.
+ */
+@media (pointer: fine) {
+  .paper-option, .download { min-height: 38px; }
 }
