@@ -118,14 +118,14 @@ describe('buildLayout — 외곽선과 접힘선', () => {
     expect(hasCorner).toBe(true);
   });
 
-  it('세로 접힘선이 완성 높이를 관통한다', () => {
+  it('세로 접힘선이 완성 높이 안에서 좌우 두 자리에만 있다', () => {
     const vertical = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm);
-    expect(vertical).toHaveLength(2);
+    expect(vertical.length).toBeGreaterThan(0);
     for (const line of vertical) {
-      expect(line.y1Mm).toBe(SEAM_MM);
-      expect(line.y2Mm).toBe(layout.totalHeightMm - SEAM_MM);
+      expect(line.y1Mm).toBeGreaterThanOrEqual(SEAM_MM);
+      expect(line.y2Mm).toBeLessThanOrEqual(layout.totalHeightMm - SEAM_MM);
     }
-    expect(vertical.map((l) => l.x1Mm)).toEqual([80, 350]);
+    expect([...new Set(vertical.map((l) => l.x1Mm))].sort((a, b) => a - b)).toEqual([80, 350]);
   });
 });
 
@@ -229,16 +229,16 @@ describe('buildLayout — 입력 범위 하한', () => {
 describe('buildLayout — 접힘선은 완성선 기준이다', () => {
   const layout = buildLayout(travel);   // 270 x 140 x 100
 
-  it('세로 접힘선 2개, 가로 접힘선 4개가 있다', () => {
+  it('세로 접힘선 6개(넓은 밴드 3줄 x 좌우), 가로 접힘선 4개가 있다', () => {
     const vertical = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm);
     const horizontal = layout.foldLinesMm.filter((l) => l.y1Mm === l.y2Mm);
-    expect(vertical).toHaveLength(2);
+    expect(vertical).toHaveLength(6);
     expect(horizontal).toHaveLength(4);
   });
 
   it('세로 접힘선이 시접 안쪽 1/2 b 자리에 있다', () => {
     // 재단선 끝이 아니라 완성선에서 b/2 들어온 자리. S + b/2 = 10 + 70 = 80
-    const xs = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm).map((l) => l.x1Mm).sort((a, b) => a - b);
+    const xs = [...new Set(layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm).map((l) => l.x1Mm))].sort((a, b) => a - b);
     expect(xs).toEqual([80, 350]);
   });
 
@@ -269,6 +269,76 @@ describe('buildLayout — 접힘선은 완성선 기준이다', () => {
       expect(ys[1]! - ys[0]!).toBeCloseTo(b, 9);
       expect(ys[2]! - ys[1]!).toBeCloseTo(c, 9);
       expect(ys[3]! - ys[2]!).toBeCloseTo(b, 9);
+    }
+  });
+});
+
+/**
+ * 접힘선과 완성선이 같은 자리에 겹친 구간의 길이를 모두 더한다.
+ * 앞판·뒤판 좌우는 오목하게 잘려 나가 접을 천이 없으므로, 그 자리의
+ * 세로 완성선 위에 접힘선이 얹히면 인쇄물에서 접는 선으로 오인된다.
+ */
+function overlapWithSeamLineMm(layout: ReturnType<typeof buildLayout>): number {
+  const seam = layout.seamLineMm;
+  let totalMm = 0;
+  for (let i = 0; i < seam.length; i++) {
+    const a = seam[i]!;
+    const b = seam[(i + 1) % seam.length]!;
+    for (const fold of layout.foldLinesMm) {
+      const verticalPair = a.xMm === b.xMm && fold.x1Mm === fold.x2Mm && fold.x1Mm === a.xMm;
+      const horizontalPair = a.yMm === b.yMm && fold.y1Mm === fold.y2Mm && fold.y1Mm === a.yMm;
+      if (!verticalPair && !horizontalPair) continue;
+
+      const [seamLo, seamHi] = verticalPair
+        ? [Math.min(a.yMm, b.yMm), Math.max(a.yMm, b.yMm)]
+        : [Math.min(a.xMm, b.xMm), Math.max(a.xMm, b.xMm)];
+      const [foldLo, foldHi] = verticalPair
+        ? [Math.min(fold.y1Mm, fold.y2Mm), Math.max(fold.y1Mm, fold.y2Mm)]
+        : [Math.min(fold.x1Mm, fold.x2Mm), Math.max(fold.x1Mm, fold.x2Mm)];
+
+      totalMm += Math.max(0, Math.min(seamHi, foldHi) - Math.max(seamLo, foldLo));
+    }
+  }
+  return totalMm;
+}
+
+describe('buildLayout — 접힘선이 완성선을 덮지 않는다', () => {
+  it('골든 케이스에서 접힘선과 완성선이 겹치는 구간이 없다', () => {
+    expect(overlapWithSeamLineMm(buildLayout(travel))).toBe(0);
+  });
+
+  it('모든 치수 조합에서 접힘선과 완성선이 겹치지 않는다', () => {
+    for (const dims of seamCases) {
+      expect(overlapWithSeamLineMm(buildLayout(dims))).toBe(0);
+    }
+  });
+
+  it('세로 접힘선이 넓은 밴드 구간에서만 끊어져 나온다', () => {
+    // 270x140x100. 완성 밴드 경계는 10 / 55 / 195 / 295 / 435 / 480.
+    // 앞판(55~195)·뒤판(295~435)은 좌우가 잘려 나가 접을 자리가 없다.
+    const segments = buildLayout(travel)
+      .foldLinesMm.filter((l) => l.x1Mm === l.x2Mm)
+      .map((l) => [l.x1Mm, Math.min(l.y1Mm, l.y2Mm), Math.max(l.y1Mm, l.y2Mm)] as const)
+      .sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+
+    expect(segments).toEqual([
+      [80, 10, 55],
+      [80, 195, 295],
+      [80, 435, 480],
+      [350, 10, 55],
+      [350, 195, 295],
+      [350, 435, 480],
+    ]);
+  });
+
+  it('세로 접힘선 양 끝이 가로 접힘선이나 위아래 완성선에 닿는다', () => {
+    const layout = buildLayout(travel);
+    const horizontalYs = layout.foldLinesMm.filter((l) => l.y1Mm === l.y2Mm).map((l) => l.y1Mm);
+    const anchors = new Set([SEAM_MM, layout.totalHeightMm - SEAM_MM, ...horizontalYs]);
+
+    for (const line of layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm)) {
+      expect(anchors.has(line.y1Mm)).toBe(true);
+      expect(anchors.has(line.y2Mm)).toBe(true);
     }
   });
 });

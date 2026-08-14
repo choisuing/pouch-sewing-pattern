@@ -75,12 +75,20 @@ export function buildLayout(dimensions: Dimensions): Layout {
   const panelHeightMm = H - 2 * S;
   const bottomBandHeightMm = D + 2 * S;
 
-  const specs: readonly { id: BandId; label: string; widthMm: number; heightMm: number }[] = [
-    { id: 'topFront', label: '지퍼단', widthMm: totalWidthMm, heightMm: topBandHeightMm },
-    { id: 'front', label: '앞판', widthMm: panelWidthMm, heightMm: panelHeightMm },
-    { id: 'bottom', label: '바닥', widthMm: totalWidthMm, heightMm: bottomBandHeightMm },
-    { id: 'back', label: '뒤판', widthMm: panelWidthMm, heightMm: panelHeightMm },
-    { id: 'topBack', label: '지퍼단', widthMm: totalWidthMm, heightMm: topBandHeightMm },
+  // heightMm은 시접이 포함된 재단 높이, finishedHeightMm은 완성 높이다.
+  // 접힘선은 완성 높이로 잡아야 하므로 둘을 함께 들고 다닌다.
+  const specs: readonly {
+    id: BandId;
+    label: string;
+    widthMm: number;
+    heightMm: number;
+    finishedHeightMm: number;
+  }[] = [
+    { id: 'topFront', label: '지퍼단', widthMm: totalWidthMm, heightMm: topBandHeightMm, finishedHeightMm: D / 2 - Z / 2 },
+    { id: 'front', label: '앞판', widthMm: panelWidthMm, heightMm: panelHeightMm, finishedHeightMm: H },
+    { id: 'bottom', label: '바닥', widthMm: totalWidthMm, heightMm: bottomBandHeightMm, finishedHeightMm: D },
+    { id: 'back', label: '뒤판', widthMm: panelWidthMm, heightMm: panelHeightMm, finishedHeightMm: H },
+    { id: 'topBack', label: '지퍼단', widthMm: totalWidthMm, heightMm: topBandHeightMm, finishedHeightMm: D / 2 - Z / 2 },
   ];
 
   const bands: Band[] = [];
@@ -137,24 +145,36 @@ export function buildLayout(dimensions: Dimensions): Layout {
   /*
    * 접힘선은 재단선이 아니라 완성선을 기준으로 잡는다. 밴드 높이는
    * 재단 치수(시접 포함)라서 그 경계를 그대로 쓰면 시접만큼 밀린다.
-   * 완성 밴드 높이는 윗단 D/2 - Z/2, 앞뒤판 H, 바닥 D이고,
-   * 시작점은 위쪽 시접 S부터다.
+   * 완성 밴드 경계는 위쪽 시접 S부터 완성 높이를 쌓아 얻는다.
    */
   const foldLeft = S + sideInsetMm;
   const foldRight = totalWidthMm - S - sideInsetMm;
-  const foldTop = S;
-  const foldBottom = total - S;
 
-  const finishedBandHeights = [D / 2 - Z / 2, H, D, H];
-  const foldLinesMm: Line[] = [
-    { x1Mm: foldLeft, y1Mm: foldTop, x2Mm: foldLeft, y2Mm: foldBottom },
-    { x1Mm: foldRight, y1Mm: foldTop, x2Mm: foldRight, y2Mm: foldBottom },
-  ];
+  const finishedEdges: number[] = [S];
+  for (const spec of specs) {
+    finishedEdges.push(finishedEdges[finishedEdges.length - 1]! + spec.finishedHeightMm);
+  }
 
-  let foldY = foldTop;
-  for (const height of finishedBandHeights) {
-    foldY += height;
-    foldLinesMm.push({ x1Mm: foldLeft, y1Mm: foldY, x2Mm: foldRight, y2Mm: foldY });
+  const foldLinesMm: Line[] = [];
+
+  /*
+   * 세로 접힘선은 전개도 폭을 꽉 채우는 밴드(지퍼단·바닥)에만 긋는다.
+   * 앞판·뒤판은 좌우가 오목하게 잘려 나가 접을 천이 없고, 그 자리는
+   * 접는 선이 아니라 옆면과 이어 박는 완성선이다. 여기에 접힘선을 얹으면
+   * 인쇄물에서 완성선을 접는 선으로 오인하게 된다.
+   */
+  specs.forEach((spec, i) => {
+    if (spec.widthMm !== totalWidthMm) return;
+    const topMm = finishedEdges[i]!;
+    const bottomMm = finishedEdges[i + 1]!;
+    foldLinesMm.push({ x1Mm: foldLeft, y1Mm: topMm, x2Mm: foldLeft, y2Mm: bottomMm });
+    foldLinesMm.push({ x1Mm: foldRight, y1Mm: topMm, x2Mm: foldRight, y2Mm: bottomMm });
+  });
+
+  // 가로 접힘선은 밴드와 밴드 사이 경계다. 맨 위·맨 아래는 완성선이라 뺀다.
+  for (let i = 1; i < finishedEdges.length - 1; i++) {
+    const yMm = finishedEdges[i]!;
+    foldLinesMm.push({ x1Mm: foldLeft, y1Mm: yMm, x2Mm: foldRight, y2Mm: yMm });
   }
 
   return {
