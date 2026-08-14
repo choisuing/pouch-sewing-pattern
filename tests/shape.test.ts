@@ -168,3 +168,188 @@ describe('renderShapeSvg — WebKit 크기 계산', () => {
     expect(style).toMatch(/height:\s*auto/);
   });
 });
+
+describe('renderShapeSvg — 지퍼가 옆면으로 이어진다', () => {
+  /*
+   * 지퍼단은 W + H 폭이고 윗면은 W뿐이라, 남는 H가 좌우 H/2씩 옆면으로
+   * 넘어간다. 옆면 위쪽 절반이 지퍼단이고 지퍼는 그 한가운데를 세로로
+   * H/2만큼 내려온다. 왼쪽 옆면은 파우치에 가려 그리지 않는다.
+   */
+  const lines = (svg: string, cls: string) =>
+    [...svg.matchAll(new RegExp(`class="${cls}"[^>]*x1="([\\d.-]+)" y1="([\\d.-]+)" x2="([\\d.-]+)" y2="([\\d.-]+)"`, 'g'))]
+      .map((m) => ({ x1: Number(m[1]), y1: Number(m[2]), x2: Number(m[3]), y2: Number(m[4]) }));
+
+  it('윗면 지퍼 줄 수만큼 옆면에도 이어진다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(lines(svg, 'zipper-side')).toHaveLength(lines(svg, 'zipper').length);
+  });
+
+  it('옆면 지퍼가 윗면 지퍼의 오른쪽 끝에서 시작한다', () => {
+    const svg = renderShapeSvg(pencil);
+    const top = lines(svg, 'zipper');
+    const side = lines(svg, 'zipper-side');
+    for (let i = 0; i < top.length; i++) {
+      expect(side[i]!.x1).toBeCloseTo(top[i]!.x2, 1);
+      expect(side[i]!.y1).toBeCloseTo(top[i]!.y2, 1);
+    }
+  });
+
+  it('옆면 지퍼가 세로로 높이의 절반만큼 내려온다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      for (const line of lines(renderShapeSvg(dims), 'zipper-side')) {
+        expect(line.x1).toBeCloseTo(line.x2, 6);
+        expect(line.y2 - line.y1).toBeCloseTo(dims.heightMm / 2, 1);
+      }
+    }
+  });
+
+  it('옆면 지퍼가 옆면 밖으로 나가지 않는다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const side = svg.match(/class="face-side" points="([^"]*)"/)![1]!
+        .split(' ').map((p) => { const [x, y] = p.split(',').map(Number); return { x: x!, y: y! }; });
+      const xs = side.map((p) => p.x);
+      const ys = side.map((p) => p.y);
+      for (const line of lines(svg, 'zipper-side')) {
+        expect(line.x1).toBeGreaterThanOrEqual(Math.min(...xs));
+        expect(line.x1).toBeLessThanOrEqual(Math.max(...xs));
+        expect(line.y2).toBeLessThanOrEqual(Math.max(...ys));
+      }
+    }
+  });
+});
+
+describe('renderShapeSvg — 지퍼는 빨간 한 줄이다', () => {
+  const lineList = (svg: string, cls: string) =>
+    [...svg.matchAll(new RegExp(`class="${cls}"[^>]*x1="([\\d.-]+)" y1="([\\d.-]+)" x2="([\\d.-]+)" y2="([\\d.-]+)"[^>]*stroke="(#[0-9a-fA-F]{3,6})"`, 'g'))]
+      .map((m) => ({ x1: Number(m[1]), y1: Number(m[2]), x2: Number(m[3]), y2: Number(m[4]), stroke: m[5]! }));
+
+  it('윗면과 옆면에 각각 한 줄씩만 있다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(lineList(svg, 'zipper')).toHaveLength(1);
+    expect(lineList(svg, 'zipper-side')).toHaveLength(1);
+  });
+
+  it('두 줄 모두 빨간색이다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(lineList(svg, 'zipper')[0]!.stroke).toBe('#b42318');
+    expect(lineList(svg, 'zipper-side')[0]!.stroke).toBe('#b42318');
+  });
+
+  it('윗면 지퍼가 바닥폭 한가운데에 놓인다', () => {
+    // 앞뒤 지퍼단이 D/2 - Z/2씩 맞물리므로 지퍼는 윗면 깊이의 정중앙이다.
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const top = svg.match(/class="face-top" points="([^"]*)"/)![1]!
+        .split(' ').map((p) => { const [x, y] = p.split(',').map(Number); return { x: x!, y: y! }; });
+      const ys = top.map((p) => p.y);
+      const middle = (Math.min(...ys) + Math.max(...ys)) / 2;
+      expect(lineList(svg, 'zipper')[0]!.y1).toBeCloseTo(middle, 1);
+    }
+  });
+});
+
+describe('renderShapeSvg — 옆면 완성선', () => {
+  /*
+   * 옆면 위쪽 절반은 지퍼단 옆날개, 아래쪽 절반은 바닥단 옆날개다.
+   * 둘의 완성선이 만나는 자리가 옆면 높이의 정확히 절반이고,
+   * 옆면 지퍼가 내려와 끝나는 지점도 같은 선이다.
+   */
+  const seamOf = (svg: string) => {
+    const m = svg.match(/class="side-seam"[^>]*x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/);
+    if (m === null) throw new Error('옆면 완성선을 찾지 못했다');
+    return { x1: Number(m[1]), y1: Number(m[2]), x2: Number(m[3]), y2: Number(m[4]) };
+  };
+  const corners = (svg: string, cls: string) =>
+    svg.match(new RegExp(`class="${cls}" points="([^"]*)"`))![1]!
+      .split(' ').map((p) => { const [x, y] = p.split(',').map(Number); return { x: x!, y: y! }; });
+
+  it('옆면 앞뒤 모서리를 잇는다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const [frontTop, backTop] = corners(svg, 'face-side');
+      const seam = seamOf(svg);
+      expect(seam.x1).toBeCloseTo(frontTop!.x, 1);
+      expect(seam.x2).toBeCloseTo(backTop!.x, 1);
+    }
+  });
+
+  it('옆면 위 모서리에서 높이의 절반만큼 내려온 자리다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const [frontTop, backTop] = corners(svg, 'face-side');
+      const seam = seamOf(svg);
+      expect(seam.y1 - frontTop!.y).toBeCloseTo(dims.heightMm / 2, 1);
+      expect(seam.y2 - backTop!.y).toBeCloseTo(dims.heightMm / 2, 1);
+    }
+  });
+
+  it('옆면 지퍼가 이 선에서 끝난다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const zip = svg.match(/class="zipper-side"[^>]*x2="([\d.-]+)" y2="([\d.-]+)"/)!;
+      const [zx, zy] = [Number(zip[1]), Number(zip[2])];
+      const seam = seamOf(svg);
+      // 끝점이 완성선 위에 있는지: 두 끝점과 이룬 삼각형 넓이가 0
+      const area = (seam.x2 - seam.x1) * (zy! - seam.y1) - (zx! - seam.x1) * (seam.y2 - seam.y1);
+      expect(area).toBeCloseTo(0, 1);
+    }
+  });
+
+  it('검정 실선이라 지퍼와 구별된다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(svg).toMatch(/class="side-seam"[^>]*stroke="#222"/);
+    expect(svg).not.toMatch(/class="side-seam"[^>]*stroke-dasharray/);
+  });
+});
+
+describe('renderShapeSvg — 반대편(가려진) 옆면', () => {
+  /*
+   * 왼쪽 옆면은 파우치에 가려 보이지 않지만, 지퍼가 양 끝에서 똑같이
+   * 내려온다는 걸 보여 주려고 흐리게 비춘다. 숨은 모서리 점선과 같은 취지다.
+   */
+  const lineOf = (svg: string, cls: string) => {
+    const m = svg.match(new RegExp(`class="${cls}"[^>]*x1="([\\d.-]+)" y1="([\\d.-]+)" x2="([\\d.-]+)" y2="([\\d.-]+)"[^>]*?(?:stroke-opacity="([\\d.]+)")?\\s*/>`));
+    if (m === null) throw new Error(`${cls}를 찾지 못했다`);
+    return { x1: Number(m[1]), y1: Number(m[2]), x2: Number(m[3]), y2: Number(m[4]), opacity: m[5] };
+  };
+
+  it('반대편에도 완성선과 지퍼 내림선이 있다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(svg).toContain('class="side-seam-hidden"');
+    expect(svg).toContain('class="zipper-side-hidden"');
+  });
+
+  it('둘 다 30% 투명도로 흐리다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(lineOf(svg, 'side-seam-hidden').opacity).toBe('0.3');
+    expect(lineOf(svg, 'zipper-side-hidden').opacity).toBe('0.3');
+  });
+
+  it('보이는 쪽은 흐리지 않다', () => {
+    const svg = renderShapeSvg(pencil);
+    expect(lineOf(svg, 'side-seam').opacity).toBeUndefined();
+    expect(lineOf(svg, 'zipper-side').opacity).toBeUndefined();
+  });
+
+  it('왼쪽 옆면 위 모서리에서 높이의 절반만큼 내려온 자리다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const front = svg.match(/class="face-front" points="([^"]*)"/)![1]!.split(' ')[0]!.split(',').map(Number);
+      const seam = lineOf(svg, 'side-seam-hidden');
+      // 앞면 좌상단이 곧 왼쪽 옆면의 앞쪽 위 모서리다
+      expect(seam.x1).toBeCloseTo(front[0]!, 1);
+      expect(seam.y1 - front[1]!).toBeCloseTo(dims.heightMm / 2, 1);
+    }
+  });
+
+  it('반대편 지퍼도 그 완성선에서 끝난다', () => {
+    for (const dims of [pencil, cosmetic]) {
+      const svg = renderShapeSvg(dims);
+      const seam = lineOf(svg, 'side-seam-hidden');
+      const zip = lineOf(svg, 'zipper-side-hidden');
+      const area = (seam.x2 - seam.x1) * (zip.y2 - seam.y1) - (zip.x2 - seam.x1) * (seam.y2 - seam.y1);
+      expect(area).toBeCloseTo(0, 1);
+    }
+  });
+});

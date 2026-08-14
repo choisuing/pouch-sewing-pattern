@@ -20,6 +20,18 @@ const PAD_RATIO = 0.15;
 const FONT_RATIO = 0.062;
 const STROKE_RATIO = 0.009;
 
+/**
+ * 지퍼가 윗면 뒤쪽 모서리에서 앞쪽으로 들어온 비율. 앞뒤 지퍼단이
+ * D/2 − Z/2씩 맞물리므로 지퍼는 바닥폭의 정중앙에 놓인다.
+ */
+const ZIPPER_DEPTH = 0.5;
+
+/** 지퍼 색. style.css의 --danger와 같은 값이다. */
+const ZIPPER_COLOR = '#b42318';
+
+/** 가려진 왼쪽 옆면을 비추는 정도. */
+const HIDDEN_SIDE_OPACITY = 0.3;
+
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -85,14 +97,40 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     })
     .join('');
 
-  // 지퍼는 윗면 뒤쪽 가장자리를 따라 놓인다. 평행선으로 층을 준다.
-  const zipper = [0.16, 0.28, 0.4]
-    .map((t) => {
-      const a = lerp(backTopLeft, frontTopLeft, t);
-      const b = lerp(backTopRight, frontTopRight, t);
-      return `<line class="zipper" x1="${round1(a.x)}" y1="${round1(a.y)}" x2="${round1(b.x)}" y2="${round1(b.y)}" stroke="#666" stroke-width="${round1(stroke * 0.55)}" />`;
-    })
-    .join('');
+  const zipperStroke = round1(stroke * 0.9);
+
+  /*
+   * 옆면은 위쪽 절반이 지퍼단 옆날개, 아래쪽 절반이 바닥단 옆날개다.
+   * 넓이로 확인하면 D×H = (H/2)×D + 2×(H/2)×(D/2−Z/2) + (H/2)×Z 로 딱 맞는다.
+   * 둘의 완성선이 만나는 자리를 긋고, 지퍼도 거기까지 내려온다.
+   *
+   * 좌우 옆면이 같은 계산을 쓰도록 한 함수로 묶는다. 왼쪽은 파우치에
+   * 가려 보이지 않지만, 지퍼가 양 끝에서 똑같이 내려온다는 걸 보여 주려고
+   * 흐리게 비춘다. 숨은 모서리를 점선으로 비추는 것과 같은 취지다.
+   */
+  const sideMarks = (topFront: Point, topBack: Point, suffix: string, opacity?: number) => {
+    const fade = opacity === undefined ? '' : ` stroke-opacity="${opacity}"`;
+    const zipTop = lerp(topBack, topFront, ZIPPER_DEPTH);
+    return (
+      `<line class="side-seam${suffix}" x1="${round1(topFront.x)}" y1="${round1(topFront.y + H / 2)}"` +
+      ` x2="${round1(topBack.x)}" y2="${round1(topBack.y + H / 2)}"` +
+      ` stroke="#222" stroke-width="${round1(stroke * 0.6)}"${fade} />` +
+      `<line class="zipper-side${suffix}" x1="${round1(zipTop.x)}" y1="${round1(zipTop.y)}"` +
+      ` x2="${round1(zipTop.x)}" y2="${round1(zipTop.y + H / 2)}"` +
+      ` stroke="${ZIPPER_COLOR}" stroke-width="${zipperStroke}" stroke-linecap="round"${fade} />`
+    );
+  };
+
+  const hiddenSide = sideMarks(frontTopLeft, backTopLeft, '-hidden', HIDDEN_SIDE_OPACITY);
+  const visibleSide = sideMarks(frontTopRight, backTopRight, '');
+  const zipperLeft = lerp(backTopLeft, frontTopLeft, ZIPPER_DEPTH);
+  const zipperRight = lerp(backTopRight, frontTopRight, ZIPPER_DEPTH);
+
+  // 지퍼는 윗면 한가운데를 가로지른다.
+  const zipper =
+    `<line class="zipper" x1="${round1(zipperLeft.x)}" y1="${round1(zipperLeft.y)}"` +
+    ` x2="${round1(zipperRight.x)}" y2="${round1(zipperRight.y)}"` +
+    ` stroke="${ZIPPER_COLOR}" stroke-width="${zipperStroke}" stroke-linecap="round" />`;
 
   const dimLabel = (x: number, y: number, text: string, anchor: string, rotate?: string) =>
     `<text class="dim-label" x="${round1(x)}" y="${round1(y)}" text-anchor="${anchor}" font-size="${round1(font)}" fill="#555"${rotate ?? ''}>${escapeXml(text)}</text>`;
@@ -129,6 +167,8 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     ` style="width: 100%; max-width: 100%; height: auto;" role="img" aria-label="${escapeXml(label)}">`,
     faces,
     hiddenEdges,
+    hiddenSide,
+    visibleSide,
     zipper,
     zipperLabel,
     labels,
