@@ -7,8 +7,6 @@ import {
   MM_TO_PT,
   SCALE_SQUARE_MM,
   buildPdf,
-  guidePageLines,
-  guideThumbnailRectMm,
   KOREAN_BOLD_FONT_CHARS,
   KOREAN_FONT_CHARS,
   PATTERN_NOTE,
@@ -30,11 +28,10 @@ describe('buildPdf', () => {
     expect(head).toBe('%PDF-');
   });
 
-  it('페이지 수가 타일링 결과 + 안내 1장과 일치한다', async () => {
+  it('안내 페이지 없이 도안 장만 만든다', async () => {
     const pagination = paginate(layout, 'a4');
-    const bytes = await buildPdf(layout, pagination);
-    const doc = await PDFDocument.load(bytes);
-    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
+    const doc = await PDFDocument.load(await buildPdf(layout, pagination));
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
   });
 
   it('페이지 크기가 지정한 용지와 일치한다', async () => {
@@ -51,7 +48,7 @@ describe('buildPdf', () => {
     const pagination = paginate(layout, 'a3');
     const bytes = await buildPdf(layout, pagination);
     const doc = await PDFDocument.load(bytes);
-    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
     expect(doc.getPage(0).getWidth()).toBeCloseTo(pagination.pageWidthMm * MM_TO_PT, 1);
   });
 });
@@ -94,19 +91,7 @@ describe('buildPdf — 완성선', () => {
   it('완성선이 없어도 페이지 구성은 그대로다', async () => {
     const pagination = paginate(layout, 'a4');
     const doc = await PDFDocument.load(await buildPdf({ ...layout, seamLineMm: [] }, pagination));
-    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
-  });
-
-  it('안내 페이지를 한국어로 쓴다', () => {
-    const text = guidePageLines(layout, paginate(layout, 'a4')).join('\n');
-    expect(text).toContain('완성 치수');
-    expect(text).toContain('도안 크기');
-    expect(text).toContain('용지');
-  });
-
-  it('설명 문구를 남기지 않고 치수만 적는다', () => {
-    const lines = guidePageLines(layout, paginate(layout, 'a4')).filter((l) => l !== '');
-    expect(lines).toHaveLength(3);
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
   });
 
   it('칸 번호에 쓰이는 글자가 모두 서브셋 폰트 안에 있다', () => {
@@ -126,9 +111,7 @@ describe('buildPdf — 완성선', () => {
   });
 
   it('PDF에 쓰는 모든 한국어가 서브셋 폰트 안에 있다', () => {
-    const used = new Set(
-      [...guidePageLines(layout, paginate(layout, 'a4')), SCALE_SQUARE_LABEL].join(''),
-    );
+    const used = new Set(SCALE_SQUARE_LABEL);
     const missing = [...used].filter((ch) => !KOREAN_FONT_CHARS.has(ch));
     expect(missing).toEqual([]);
   });
@@ -191,7 +174,7 @@ describe('축척 확인용 3cm 정사각형', () => {
     const withSquare = await buildPdf(layout, pagination);
     // 빨간색이 쓰이면 콘텐츠에 색 지정이 늘어난다. 페이지 수는 그대로여야 한다.
     const doc = await PDFDocument.load(withSquare);
-    expect(doc.getPageCount()).toBe(pagination.pages.length + 1);
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
   });
 });
 
@@ -209,47 +192,6 @@ function pageContent(doc: PDFDocument, index: number): string {
   if (!(stream instanceof PDFRawStream)) throw new Error('콘텐츠 스트림을 찾지 못했다');
   return inflateSync(Buffer.from(stream.asUint8Array())).toString('latin1');
 }
-
-describe('안내 페이지 축소도', () => {
-  const cases: Dimensions[] = [
-    { widthMm: 150, heightMm: 90, depthMm: 50 },
-    { widthMm: 100, heightMm: 300, depthMm: 40 },   // 세로로 아주 긴 도안
-    { widthMm: 400, heightMm: 50, depthMm: 200 },   // 가로로 아주 넓은 도안
-    { widthMm: 270, heightMm: 140, depthMm: 100 },
-  ];
-
-  it('어떤 치수에서도 페이지 안에 들어간다', () => {
-    for (const dims of cases) {
-      for (const paper of ['a4', 'a3'] as const) {
-        const l = buildLayout(dims);
-        const pagination = paginate(l, paper);
-        const rect = guideThumbnailRectMm(l, pagination);
-
-        expect(rect.xMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
-        expect(rect.yMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
-        expect(rect.xMm + rect.widthMm).toBeLessThanOrEqual(pagination.pageWidthMm - PAGE_MARGIN_MM);
-        expect(rect.yMm + rect.heightMm).toBeLessThanOrEqual(pagination.pageHeightMm - PAGE_MARGIN_MM);
-      }
-    }
-  });
-
-  it('전개도 가로세로 비율을 지킨다', () => {
-    for (const dims of cases) {
-      const l = buildLayout(dims);
-      const rect = guideThumbnailRectMm(l, paginate(l, 'a4'));
-      expect(rect.widthMm / rect.heightMm).toBeCloseTo(l.totalWidthMm / l.totalHeightMm, 6);
-    }
-  });
-
-  it('빨간 사각형과 겹치지 않는다', () => {
-    const l = buildLayout({ widthMm: 150, heightMm: 90, depthMm: 50 });
-    const pagination = paginate(l, 'a4');
-    const thumb = guideThumbnailRectMm(l, pagination);
-    const square = scaleSquareRectMm(pagination);
-    // 사각형은 오른쪽 위, 축소도는 그 아래에서 시작해야 한다.
-    expect(thumb.yMm).toBeGreaterThanOrEqual(square.yMm + square.sizeMm);
-  });
-});
 
 describe('도안 하단 강조 문구', () => {
   it('실제사이즈로 출력하라고 알려준다', () => {
@@ -303,5 +245,33 @@ describe('빨간 문구와 사각형의 분업', () => {
       expect(content).toContain('0.85 0.1 0.1 rg');   // 문구
       expect(content).not.toContain('0.85 0.1 0.1 RG'); // 사각형 테두리
     }
+  });
+});
+
+describe('3cm 사각형은 첫 도안 장에 있다', () => {
+  it('첫 장에만 그린다', async () => {
+    const pagination = paginate(layout, 'a4');
+    expect(pagination.pages.length).toBeGreaterThan(1);
+    const doc = await PDFDocument.load(await buildPdf(layout, pagination));
+
+    expect(pageContent(doc, 0)).toContain('0.85 0.1 0.1 RG');
+    for (let i = 1; i < doc.getPageCount(); i++) {
+      expect(pageContent(doc, i)).not.toContain('0.85 0.1 0.1 RG');
+    }
+  });
+
+  it('모든 장에 실치수 안내 문구는 남는다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const doc = await PDFDocument.load(await buildPdf(layout, pagination));
+    for (let i = 0; i < doc.getPageCount(); i++) {
+      expect(pageContent(doc, i)).toContain('0.85 0.1 0.1 rg');
+    }
+  });
+
+  it('재단선을 끊지 않도록 도안보다 먼저 그린다', async () => {
+    const doc = await PDFDocument.load(await buildPdf(layout, paginate(layout, 'a4')));
+    const content = pageContent(doc, 0);
+    // 빨간 사각형 지정이 검은 재단선 지정보다 앞서야 한다.
+    expect(content.indexOf('0.85 0.1 0.1 RG')).toBeLessThan(content.indexOf('0 0 0 RG'));
   });
 });

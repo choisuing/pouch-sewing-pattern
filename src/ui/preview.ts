@@ -17,14 +17,20 @@ export function escapeXml(value: string): string {
 const TILE_COLOR = '#2a7387';
 
 /*
+ * 완성선. 시접 바탕(#fce7f0)과 도안 채움(#fffdf5) 양쪽에서 3:1을 넘어야 한다.
+ * 시접색을 바꾸면 여기도 다시 계산할 것.
+ */
+const SEAM_COLOR = '#94682f';
+
+/*
  * 선 두께와 글자 크기는 도안 폭에 비례시킨다. mm 고정값으로 두면 작은 도안에서
  * 선이 굵고 글자가 커 보이고, 큰 도안에서는 반대가 된다. 화면에서 SVG 폭이
  * 컨테이너에 맞춰지므로 도안 폭이 곧 표시 배율이다.
  */
 const CUT_STROKE_RATIO = 0.003;
 const THIN_STROKE_RATIO = 0.002;
-const BAND_LABEL_RATIO = 0.034;
-const DIM_LABEL_RATIO = 0.030;
+const BAND_LABEL_RATIO = 0.017;
+const DIM_LABEL_RATIO = 0.015;
 const TILE_LABEL_RATIO = 0.024;
 
 function round1(value: number): number {
@@ -87,9 +93,9 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
   // 두 선 사이(=시접)만 칠해진다.
   const seamBand =
     `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
-    ` fill-rule="evenodd" fill="#f0e0c4" fill-opacity="0.55" stroke="none" />`;
+    ` fill-rule="evenodd" fill="#fce7f0" fill-opacity="1" stroke="none" />`;
 
-  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="#b98a4b" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.019, 0.012)}" />`;
+  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.019, 0.012)}" />`;
 
   const folds = layout.foldLinesMm
     .map(

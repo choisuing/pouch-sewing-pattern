@@ -16,7 +16,7 @@ export const MM_TO_PT = 72 / 25.4;
  * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
  */
 export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
-  " !()-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm·×가기높닥도로바성세수안열완요용이인장지치크폭하행확",
+  " !0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm세요인하확",
 );
 
 /** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
@@ -169,8 +169,8 @@ export function scaleSquareRectMm(pagination: Pagination): {
   sizeMm: number;
 } {
   return {
-    xMm: pagination.pageWidthMm - PAGE_MARGIN_MM - 4 - SCALE_SQUARE_MM,
-    yMm: PAGE_MARGIN_MM + 8,
+    xMm: pagination.pageWidthMm - PAGE_MARGIN_MM - 2 - SCALE_SQUARE_MM,
+    yMm: PAGE_MARGIN_MM + 10,
     sizeMm: SCALE_SQUARE_MM,
   };
 }
@@ -218,135 +218,11 @@ function drawScaleSquare(page: PDFPage, pagination: Pagination, font: PDFFont) {
   });
 }
 
-const ORIENTATION_LABELS: Record<Pagination['orientation'], string> = {
-  portrait: '세로',
-  landscape: '가로',
-};
-
-/**
- * 안내 페이지 문구. 치수만 적는다. 인쇄 방법 설명은 넣지 않는다 —
- * 빨간 3cm 사각형과 그 라벨만으로 배율 확인은 전달된다.
- *
- * 여기 쓰는 글자는 반드시 KOREAN_FONT_CHARS 안에 있어야 한다.
- */
-export function guidePageLines(layout: Layout, pagination: Pagination): readonly string[] {
-  const { widthMm: W, depthMm: D, heightMm: H } = layout.dimensions;
-  const orientation = ORIENTATION_LABELS[pagination.orientation];
-  return [
-    `완성 치수   가로 ${W} · 높이 ${H} · 바닥폭 ${D}mm`,
-    `도안 크기   ${round1(layout.totalWidthMm)} × ${round1(layout.totalHeightMm)}mm`,
-    `용지        ${pagination.paper.toUpperCase()} ${orientation} ${pagination.pages.length}장 (${pagination.cols}열 × ${pagination.rows}행)`,
-  ];
-}
-
-/** 축소도가 시작하는 y. 치수 세 줄과 빨간 사각형 아래에서 시작한다. */
-const THUMBNAIL_TOP_MM = PAGE_MARGIN_MM + 8 + SCALE_SQUARE_MM + 10;
-
-/**
- * 안내 페이지 아래쪽 전체 배치 축소도의 자리 (mm).
- * 폭만 보고 배율을 정하면 세로로 긴 도안에서 페이지 밖으로 넘친다.
- * 가로·세로 중 더 빡빡한 쪽에 맞추고 비율은 그대로 둔다.
- */
-export function guideThumbnailRectMm(
-  layout: Layout,
-  pagination: Pagination,
-): { xMm: number; yMm: number; widthMm: number; heightMm: number } {
-  const leftMm = PAGE_MARGIN_MM + 6;
-  const availableWidthMm = pagination.pageWidthMm - 2 * leftMm;
-  const availableHeightMm = pagination.pageHeightMm - THUMBNAIL_TOP_MM - PAGE_MARGIN_MM;
-
-  const scale = Math.min(
-    availableWidthMm / layout.totalWidthMm,
-    availableHeightMm / layout.totalHeightMm,
-  );
-
-  return {
-    xMm: leftMm,
-    yMm: THUMBNAIL_TOP_MM,
-    widthMm: layout.totalWidthMm * scale,
-    heightMm: layout.totalHeightMm * scale,
-  };
-}
-
-function drawGuidePage(
-  doc: PDFDocument,
-  layout: Layout,
-  pagination: Pagination,
-  font: PDFFont,
-) {
-  const page = doc.addPage([
-    pagination.pageWidthMm * MM_TO_PT,
-    pagination.pageHeightMm * MM_TO_PT,
-  ]);
-  drawScaleSquare(page, pagination, font);
-
-  const lines = guidePageLines(layout, pagination);
-
-  let yMm = PAGE_MARGIN_MM + 12;
-  for (const line of lines) {
-    const point = toFramePoint(pagination, PAGE_MARGIN_MM + 6, yMm);
-    page.drawText(line, {
-      x: point.x,
-      y: point.y,
-      size: 11,
-      font,
-      color: CUT_COLOR,
-    });
-    yMm += 8;
-  }
-
-  // 전체 배치 축소도 — 페이지 격자와 전개도 외곽선
-  const thumbnail = guideThumbnailRectMm(layout, pagination);
-  const scale = thumbnail.widthMm / layout.totalWidthMm;
-  const originYMm = thumbnail.yMm;
-
-  for (const tile of pagination.pages) {
-    const rectXMm = thumbnail.xMm + tile.originXMm * scale;
-    const wMm = Math.min(pagination.contentWidthMm, layout.totalWidthMm - tile.originXMm) * scale;
-    const hMm = Math.min(pagination.contentHeightMm, layout.totalHeightMm - tile.originYMm) * scale;
-    const yTopMm = originYMm + tile.originYMm * scale;
-    const bottomLeft = toFramePoint(pagination, rectXMm, yTopMm + hMm);
-    page.drawRectangle({
-      x: bottomLeft.x,
-      y: bottomLeft.y,
-      width: wMm * MM_TO_PT,
-      height: hMm * MM_TO_PT,
-      borderColor: FOLD_COLOR,
-      borderWidth: 0.5,
-    });
-    const labelPoint = toFramePoint(pagination, rectXMm, yTopMm + 5);
-    page.drawText(tile.gridLabel, {
-      x: labelPoint.x + 3,
-      y: labelPoint.y,
-      size: 7,
-      font,
-      color: MARK_COLOR,
-    });
-  }
-
-  for (let i = 0; i < layout.outlineMm.length; i++) {
-    const a = layout.outlineMm[i]!;
-    const b = layout.outlineMm[(i + 1) % layout.outlineMm.length]!;
-    page.drawLine({
-      start: toFramePoint(pagination, thumbnail.xMm + a.xMm * scale, originYMm + a.yMm * scale),
-      end: toFramePoint(pagination, thumbnail.xMm + b.xMm * scale, originYMm + b.yMm * scale),
-      thickness: 0.8,
-      color: CUT_COLOR,
-    });
-  }
-}
-
-function round1(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
 export async function buildPdf(layout: Layout, pagination: Pagination): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
   const font = await doc.embedFont(decodeBase64(KOREAN_FONT_BASE64));
   const boldFont = await doc.embedFont(decodeBase64(KOREAN_BOLD_FONT_BASE64));
-
-  drawGuidePage(doc, layout, pagination, font);
 
   for (const page of pagination.pages) {
     const pdfPage = doc.addPage([
@@ -354,6 +230,11 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
       pagination.pageHeightMm * MM_TO_PT,
     ]);
     const ctx: PageContext = { pdfPage, pagination, page };
+
+    // 배율 확인용 사각형은 첫 장에만, 도안보다 먼저 그린다. 나중에 그리면
+    // 흰 바탕이 재단선을 끊는데, 자를 대는 건 사각형의 빨간 변이라
+    // 도안 선이 위로 지나가도 재는 데 지장이 없다.
+    if (page === pagination.pages[0]) drawScaleSquare(pdfPage, pagination, font);
 
     drawPolygon(ctx, layout.outlineMm, 1);
     drawSeamLine(ctx, layout.seamLineMm);
@@ -370,6 +251,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
 
     drawAlignmentMarks(ctx, font);
     drawPatternNote(ctx, boldFont);
+
   }
 
   return doc.save();

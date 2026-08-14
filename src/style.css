@@ -8,8 +8,8 @@
   --surface: #ffffff;
   --text: #2b2118;
   --muted: #6e6055;
-  --accent: #c2410c;
-  --accent-hover: #9a3412;
+  --accent: #111111;   /* 흰 글자 위 18.88:1 */
+  --accent-hover: #000000;
   --info: #0e7490;
   --danger: #b42318;
   --field-line: #a18e73;
@@ -155,7 +155,7 @@ body {
  */
 .input-row input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.14);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
 }
 .input-hint { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
@@ -223,7 +223,7 @@ body {
   transition: border-color var(--speed), background-color var(--speed);
 }
 .paper-option:hover { border-color: var(--accent); }
-.paper-option:has(input:checked) { border-color: var(--accent); background: #fdf5f0; }
+.paper-option:has(input:checked) { border-color: var(--accent); background: #f4f4f3; }
 .paper-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .paper-count { color: var(--muted); font-size: 13px; }
 
@@ -256,13 +256,13 @@ body {
 /* 아래 견본색은 preview.ts가 그리는 선과 같은 값을 써야 한다. */
 .swatch { flex: none; width: 26px; height: 0; }
 .swatch-cut { border-top: 2px solid #222; }
-.swatch-seam { border-top: 2px dashed #b98a4b; }
+.swatch-seam { border-top: 2px dashed #94682f; }
 .swatch-tile { border-top: 2px dashed #2a7387; }
 .swatch-seam-band {
   height: 12px;
-  border: 1px solid #b98a4b;
+  border: 1px solid #94682f;
   border-radius: 2px;
-  background: rgba(240, 224, 196, 0.55);
+  background: #fce7f0;
 }
 
 /* 내려받기 */
