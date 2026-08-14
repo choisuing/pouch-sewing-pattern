@@ -32,8 +32,16 @@ describe('renderPreviewSvg', () => {
     expect(count).toBe(pagination.pages.length);
   });
 
-  it('접힘선을 점선으로 그린다', () => {
-    expect(svg).toContain('stroke-dasharray');
+  it('접힘선을 그리지 않는다', () => {
+    expect(svg).not.toContain('class="fold-line"');
+  });
+
+  it('완성선을 재단선보다 얇은 실선으로 그린다', () => {
+    const seam = svg.match(/class="seam-line"[^>]*stroke-width="([\d.]+)"/);
+    const cut = svg.match(/<polygon points="[^"]*"[^>]*stroke-width="([\d.]+)"/);
+    expect(Number(seam![1])).toBeLessThan(Number(cut![1]));
+    // 실선이므로 점선 지정이 없어야 한다.
+    expect(svg).not.toMatch(/class="seam-line"[^>]*stroke-dasharray/);
   });
 });
 

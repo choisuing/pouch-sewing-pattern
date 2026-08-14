@@ -56,10 +56,14 @@ describe('전개도 미리보기 — 대비', () => {
     expect(contrast(colorOf(previewSvg, 'seam-line', 'stroke'), PATTERN_FILL)).toBeGreaterThanOrEqual(3);
   });
 
-  it('페이지 경계선과 접힘선이 서로 구별될 만큼 다르다', () => {
-    const tile = colorOf(previewSvg, 'page-tile', 'stroke');
-    const fold = colorOf(previewSvg, 'fold-line', 'stroke');
-    expect(contrast(tile, fold)).toBeGreaterThan(1.4);
+  it('페이지 경계선과 완성선을 색과 선 모양 양쪽으로 구별한다', () => {
+    // 명도만으로는 갈라지지 않는 조합이라(청록과 갈색은 명도가 비슷하다)
+    // 색이 다르다는 것과 선 모양이 다르다는 것을 함께 확인한다.
+    expect(colorOf(previewSvg, 'page-tile', 'stroke')).not.toBe(
+      colorOf(previewSvg, 'seam-line', 'stroke'),
+    );
+    expect(previewSvg).toMatch(/class="page-tile"[^>]*stroke-dasharray/);
+    expect(previewSvg).not.toMatch(/class="seam-line"[^>]*stroke-dasharray/);
   });
 });
 

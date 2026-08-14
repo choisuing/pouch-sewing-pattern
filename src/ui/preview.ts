@@ -95,22 +95,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
     ` fill-rule="evenodd" fill="#fce7f0" fill-opacity="1" stroke="none" />`;
 
-  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.019, 0.012)}" />`;
-
-  const folds = layout.foldLinesMm
-    .map(
-      (line) =>
-        `<line class="fold-line" x1="${round1(line.x1Mm)}" y1="${round1(line.y1Mm)}" x2="${round1(line.x2Mm)}" y2="${round1(line.y2Mm)}" stroke="#888" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.031, 0.019)}" />`,
-    )
-    .join('');
-
-  const bandLines = layout.bands
-    .filter((band) => band.yMm > 0)
-    .map(
-      (band) =>
-        `<line class="fold-line" x1="${round1(band.xMm)}" y1="${round1(band.yMm)}" x2="${round1(band.xMm + band.widthMm)}" y2="${round1(band.yMm)}" stroke="#888" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.031, 0.019)}" />`,
-    )
-    .join('');
+  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" />`;
 
   const labels = layout.bands
     .map(
@@ -132,8 +117,6 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="${cutStroke}" />`,
     seamBand,
     seamLine,
-    bandLines,
-    folds,
     tileLabels,
     labels,
     dims,

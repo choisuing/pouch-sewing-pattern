@@ -256,7 +256,7 @@ body {
 /* 아래 견본색은 preview.ts가 그리는 선과 같은 값을 써야 한다. */
 .swatch { flex: none; width: 26px; height: 0; }
 .swatch-cut { border-top: 2px solid #222; }
-.swatch-seam { border-top: 2px dashed #94682f; }
+.swatch-seam { border-top: 1px solid #94682f; }
 .swatch-tile { border-top: 2px dashed #2a7387; }
 .swatch-seam-band {
   height: 12px;
