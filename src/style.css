@@ -68,7 +68,25 @@ body {
   padding: var(--space-6) var(--space-5) 64px;
 }
 
-/* 머리말 */
+/*
+ * 머리말 — 글은 왼쪽, 완성 사진은 오른쪽 위. 좁아지면 사진이 아래로 내려가
+ * 가로폭을 다 쓴다. 사진에 width/height를 박아 두어 늦게 떠도 글이 밀리지 않는다.
+ */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+.head-text { flex: 1 1 300px; min-width: 0; }
+.head-photo {
+  flex: 0 1 400px;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+}
+
 .head h1 {
   font-size: 25px;
   font-weight: 400;
