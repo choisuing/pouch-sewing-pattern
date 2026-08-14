@@ -150,3 +150,21 @@ describe('renderShapeSvg — 지퍼 위치 안내', () => {
     expect(label).toBeLessThan(front);
   });
 });
+
+describe('renderShapeSvg — WebKit 크기 계산', () => {
+  /*
+   * viewBox만 주고 width를 비우면 WebKit(iOS사파리)이 flex 안에서
+   * 폭을 0으로 계산해 그림이 통째로 사라진다. Chromium·Firefox는
+   * viewBox 비율로 알아서 잡아 주기 때문에 데스크톱에서는 드러나지 않는다.
+   */
+  it('폭을 명시해 WebKit이 0으로 계산하지 않게 한다', () => {
+    const svg = renderShapeSvg(pencil);
+    const style = svg.match(/<svg[^>]*style="([^"]*)"/)![1]!;
+    expect(style).toMatch(/(^|;)\s*width:\s*100%/);
+  });
+
+  it('높이는 비율대로 따라오게 둔다', () => {
+    const style = renderShapeSvg(pencil).match(/<svg[^>]*style="([^"]*)"/)![1]!;
+    expect(style).toMatch(/height:\s*auto/);
+  });
+});

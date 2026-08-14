@@ -173,3 +173,15 @@ describe('renderPreviewSvg — 페이지 경계선이 도안 위에 보인다', 
     expect(xs[0]).toBeLessThan(wide.totalWidthMm);
   });
 });
+
+describe('renderPreviewSvg — WebKit 크기 계산', () => {
+  /*
+   * 지금은 치수 라벨 때문에 넣은 overflow: visible이 WebKit의 0폭 계산을
+   * 우연히 막아 주고 있다. 그 스타일을 빼면 그림이 사라지므로 폭을 직접
+   * 못 박아 우연에 기대지 않게 한다.
+   */
+  it('폭을 명시해 WebKit이 0으로 계산하지 않게 한다', () => {
+    const style = svg.match(/<svg[^>]*style="([^"]*)"/)![1]!;
+    expect(style).toMatch(/(^|;)\s*width:\s*100%/);
+  });
+});

@@ -124,7 +124,9 @@ export function renderShapeSvg(dimensions: Dimensions): string {
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${round1(viewWidth)} ${round1(viewHeight)}"`,
-    ` style="max-width: 100%; height: auto;" role="img" aria-label="${escapeXml(label)}">`,
+    // width를 비우고 viewBox 비율에만 맡기면 WebKit이 flex 안에서 폭을 0으로
+    // 계산해 그림이 통째로 사라진다. 폭을 못 박고 높이만 비율대로 따라오게 한다.
+    ` style="width: 100%; max-width: 100%; height: auto;" role="img" aria-label="${escapeXml(label)}">`,
     faces,
     hiddenEdges,
     zipper,
