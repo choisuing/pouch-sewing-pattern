@@ -75,3 +75,9 @@ python3 scripts/build-korean-font.py
 `scripts/build-korean-font.py`의 `CHARS`와 `src/core/pdf.ts`의 `KOREAN_FONT_CHARS`를 함께 고친다. 빠뜨리면 `tests/pdf.test.ts`가 먼저 실패한다.
 
 서브셋에서 GPOS/GSUB를 제거하는 이유가 있다. Noto Sans KR은 CJK 폰트라 전각 기준 위치 조정이 들어 있는데, 그대로 두면 fontkit이 이를 적용해 `3cm`이 `3 cm`처럼 벌어진다.
+
+## 아이콘
+
+섹션 제목의 아이콘은 [Twemoji](https://github.com/jdecked/twemoji) SVG를 `index.html`에 직접 넣어 쓴다 (CC-BY 4.0). 네 개 합쳐 약 2.6KB이며 외부에서 받아오지 않는다.
+
+이모지를 글자로 두지 않는 이유는 OS마다 모양이 달라지기 때문이다. SVG로 넣으면 어디서나 같게 보이고 선명하다.

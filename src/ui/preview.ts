@@ -16,6 +16,17 @@ export function escapeXml(value: string): string {
  */
 const TILE_COLOR = '#2a7387';
 
+/*
+ * 선 두께와 글자 크기는 도안 폭에 비례시킨다. mm 고정값으로 두면 작은 도안에서
+ * 선이 굵고 글자가 커 보이고, 큰 도안에서는 반대가 된다. 화면에서 SVG 폭이
+ * 컨테이너에 맞춰지므로 도안 폭이 곧 표시 배율이다.
+ */
+const CUT_STROKE_RATIO = 0.003;
+const THIN_STROKE_RATIO = 0.002;
+const BAND_LABEL_RATIO = 0.034;
+const DIM_LABEL_RATIO = 0.030;
+const TILE_LABEL_RATIO = 0.024;
+
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -48,20 +59,27 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
   const w = layout.totalWidthMm;
   const h = layout.totalHeightMm;
 
+  const cutStroke = round1(w * CUT_STROKE_RATIO);
+  const thinStroke = round1(w * THIN_STROKE_RATIO);
+  const bandLabelSize = round1(w * BAND_LABEL_RATIO);
+  const dimLabelSize = round1(w * DIM_LABEL_RATIO);
+  const tileLabelSize = round1(w * TILE_LABEL_RATIO);
+  const dash = (a: number, b: number) => `${round1(w * a)} ${round1(w * b)}`;
+
   const points = toPolygonPoints(layout.outlineMm);
 
   const tiles = pagination.pages
     .map((page) => {
       const tileW = Math.min(pagination.contentWidthMm, w - page.originXMm);
       const tileH = Math.min(pagination.contentHeightMm, h - page.originYMm);
-      return `<rect class="page-tile" x="${round1(page.originXMm)}" y="${round1(page.originYMm)}" width="${round1(tileW)}" height="${round1(tileH)}" fill="none" stroke="${TILE_COLOR}" stroke-width="1" stroke-dasharray="6 4" />`;
+      return `<rect class="page-tile" x="${round1(page.originXMm)}" y="${round1(page.originYMm)}" width="${round1(tileW)}" height="${round1(tileH)}" fill="none" stroke="${TILE_COLOR}" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.023, 0.015)}" />`;
     })
     .join('');
 
   const tileLabels = pagination.pages
     .map(
       (page) =>
-        `<text class="tile-label" x="${round1(page.originXMm + 4)}" y="${round1(page.originYMm + 14)}" font-size="11" fill="${TILE_COLOR}">${escapeXml(page.gridLabel)}</text>`,
+        `<text class="tile-label" x="${round1(page.originXMm + 4)}" y="${round1(page.originYMm + 14)}" font-size="${tileLabelSize}" fill="${TILE_COLOR}">${escapeXml(page.gridLabel)}</text>`,
     )
     .join('');
 
@@ -71,12 +89,12 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
     ` fill-rule="evenodd" fill="#f0e0c4" fill-opacity="0.55" stroke="none" />`;
 
-  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="#b98a4b" stroke-width="1" stroke-dasharray="5 3" />`;
+  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="#b98a4b" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.019, 0.012)}" />`;
 
   const folds = layout.foldLinesMm
     .map(
       (line) =>
-        `<line x1="${round1(line.x1Mm)}" y1="${round1(line.y1Mm)}" x2="${round1(line.x2Mm)}" y2="${round1(line.y2Mm)}" stroke="#888" stroke-width="1" stroke-dasharray="8 5" />`,
+        `<line class="fold-line" x1="${round1(line.x1Mm)}" y1="${round1(line.y1Mm)}" x2="${round1(line.x2Mm)}" y2="${round1(line.y2Mm)}" stroke="#888" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.031, 0.019)}" />`,
     )
     .join('');
 
@@ -84,20 +102,20 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     .filter((band) => band.yMm > 0)
     .map(
       (band) =>
-        `<line x1="${round1(band.xMm)}" y1="${round1(band.yMm)}" x2="${round1(band.xMm + band.widthMm)}" y2="${round1(band.yMm)}" stroke="#888" stroke-width="1" stroke-dasharray="8 5" />`,
+        `<line class="fold-line" x1="${round1(band.xMm)}" y1="${round1(band.yMm)}" x2="${round1(band.xMm + band.widthMm)}" y2="${round1(band.yMm)}" stroke="#888" stroke-width="${thinStroke}" stroke-dasharray="${dash(0.031, 0.019)}" />`,
     )
     .join('');
 
   const labels = layout.bands
     .map(
       (band) =>
-        `<text x="${round1(band.xMm + band.widthMm / 2)}" y="${round1(band.yMm + band.heightMm / 2)}" text-anchor="middle" dominant-baseline="middle" font-size="14" fill="#333">${escapeXml(band.label)}</text>`,
+        `<text x="${round1(band.xMm + band.widthMm / 2)}" y="${round1(band.yMm + band.heightMm / 2)}" class="band-label" text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#333">${escapeXml(band.label)}</text>`,
     )
     .join('');
 
   const dims =
-    `<text x="${round1(w / 2)}" y="-8" text-anchor="middle" font-size="14" fill="#555">${round1(w)}mm</text>` +
-    `<text x="-8" y="${round1(h / 2)}" text-anchor="middle" font-size="14" fill="#555" transform="rotate(-90 -8 ${round1(h / 2)})">${round1(h)}mm</text>`;
+    `<text x="${round1(w / 2)}" y="${round1(-w * 0.03)}" text-anchor="middle" font-size="${dimLabelSize}" fill="#555">${round1(w)}mm</text>` +
+    `<text x="${round1(-w * 0.03)}" y="${round1(h / 2)}" text-anchor="middle" font-size="${dimLabelSize}" fill="#555" transform="rotate(-90 ${round1(-w * 0.03)} ${round1(h / 2)})">${round1(h)}mm</text>`;
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${round1(w)} ${round1(h)}"`,
@@ -105,7 +123,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     ` aria-label="${escapeXml(`가로 ${round1(w)}mm, 세로 ${round1(h)}mm 전개도 미리보기`)}">`,
     `<g transform="translate(0,0)">`,
     tiles,
-    `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="2" />`,
+    `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="${cutStroke}" />`,
     seamBand,
     seamLine,
     bandLines,

@@ -9,21 +9,21 @@ import {
 
 /** 프리셋 버튼에 적을 문구. 치수는 DIMENSION_ORDER 순으로 늘어놓는다. */
 export function formatPresetLabel(preset: Preset): string {
-  const sizes = DIMENSION_ORDER.map((field) => preset[field]).join('×');
+  const sizes = DIMENSION_ORDER.map((field) => preset[field]).join('*');
   return `${preset.label} ${sizes}`;
 }
 import type { PaperSize } from '../core/tiling';
 
 export function renderPresetButtons(container: HTMLElement, onPick: (preset: Preset) => void): void {
   container.innerHTML = '';
-  for (const preset of PRESETS) {
+  PRESETS.forEach((preset, index) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'preset';
+    button.className = `preset preset-${index + 1}`;
     button.textContent = formatPresetLabel(preset);
     button.addEventListener('click', () => onPick(preset));
     container.append(button);
-  }
+  });
 }
 
 export function renderInputs(container: HTMLElement, onChange: () => void): void {
@@ -48,7 +48,7 @@ export function renderInputs(container: HTMLElement, onChange: () => void): void
 
     const hint = document.createElement('span');
     hint.className = 'input-hint';
-    hint.textContent = `${min}~${max}mm`;
+    hint.textContent = `최소 ${min} ~ 최대 ${max}`;
 
     wrapper.append(name, input, hint);
     container.append(wrapper);

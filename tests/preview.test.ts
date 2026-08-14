@@ -122,3 +122,24 @@ describe('escapeXml', () => {
     );
   });
 });
+
+describe('renderPreviewSvg — 선 두께와 글자 크기', () => {
+  it('재단선이 도안 폭에 비례해 가늘어진다', () => {
+    const small = renderPreviewSvg(buildLayout({ widthMm: 100, heightMm: 50, depthMm: 40 }), paginate(buildLayout({ widthMm: 100, heightMm: 50, depthMm: 40 }), 'a4'));
+    const large = buildLayout({ widthMm: 400, heightMm: 300, depthMm: 200 });
+    const largeSvg = renderPreviewSvg(large, paginate(large, 'a4'));
+    const cut = (svg: string) => Number(svg.match(/<polygon points="[^"]*"[^>]*stroke-width="([\d.]+)"/)![1]);
+    const viewW = (svg: string) => Number(svg.match(/viewBox="0 0 ([\d.]+)/)![1]);
+    expect(cut(largeSvg) / viewW(largeSvg)).toBeCloseTo(cut(small) / viewW(small), 3);
+  });
+
+  it('밴드 이름 글자도 도안 폭에 비례한다', () => {
+    const a = buildLayout({ widthMm: 100, heightMm: 50, depthMm: 40 });
+    const b = buildLayout({ widthMm: 400, heightMm: 300, depthMm: 200 });
+    const svgA = renderPreviewSvg(a, paginate(a, 'a4'));
+    const svgB = renderPreviewSvg(b, paginate(b, 'a4'));
+    const size = (svg: string) => Number(svg.match(/class="band-label"[^>]*font-size="([\d.]+)"/)![1]);
+    const viewW = (svg: string) => Number(svg.match(/viewBox="0 0 ([\d.]+)/)![1]);
+    expect(size(svgB) / viewW(svgB)).toBeCloseTo(size(svgA) / viewW(svgA), 3);
+  });
+});

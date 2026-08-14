@@ -3,56 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>사각사각 파우치 패턴나와라 얍!</title>
+    <title>사각사각 지퍼 파우치 패턴 나와라 얍!</title>
   </head>
   <body>
     <main class="page">
       <header class="head">
-        <h1>사각사각 파우치 패턴나와라 얍!</h1>
+        <h1><strong>사각사각 지퍼 파우치</strong> <span class="head-tail">패턴 나와라 얍!</span></h1>
         <p class="sub">
-          원하는 파우치의 사이즈를 입력해주세요.
-          계산하는 시간 아껴서 만드는 즐거움에만 몰입해보세요!
+          원하는 파우치 사이즈를 입력해주세요.<br />
+          패턴 만드는 시간 아껴서 &lsquo;만드는 즐거움&rsquo;에만 몰입해보세요!
         </p>
       </header>
 
       <div class="workspace">
-        <!-- 왼쪽: 입력과 내려받기. 넓은 화면에서는 스크롤을 따라 붙는다. -->
-        <section class="card panel-input" aria-label="치수 입력">
-          <h2 class="label">자주 쓰는 크기</h2>
-          <div class="presets" id="presets"></div>
-
-          <h2 class="label">완성 치수 (mm)</h2>
+        <section class="panel" aria-labelledby="size-heading">
+          <h2 class="section" id="size-heading"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path fill="#FFCC4D" d="M30.021 34.264c-1.563 1.563-4.095 1.562-5.656 0L1.736 11.636c-1.562-1.562-1.563-4.094 0-5.657l4.243-4.242c1.562-1.562 4.095-1.562 5.657 0l22.626 22.628c1.562 1.562 1.562 4.096.001 5.656l-4.242 4.243z"/><path fill="#292F33" d="M9.515 6.687c-.391.39-1.023.39-1.414 0-.39-.391-.39-1.024 0-1.415l3.536-3.536 1.414 1.415-3.536 3.536zm5.656 1.414c-.39.391-1.024.391-1.414 0-.391-.391-.391-1.024 0-1.414l1.415-1.415 1.414 1.415-1.415 1.414zm1.415 5.656c-.391.391-1.024.391-1.414 0-.39-.391-.39-1.024 0-1.414l3.536-3.536c.486.486.929.928 1.414 1.415l-3.536 3.535zm5.656 1.414c-.39.391-1.023.391-1.413 0-.392-.391-.391-1.024 0-1.414l1.414-1.415c.485.487.928.928 1.414 1.415l-1.415 1.414zm1.415 5.657c-.391.391-1.023.392-1.414 0-.391-.391-.391-1.023-.001-1.414l3.536-3.535 1.414 1.414-3.535 3.535zm7.071 7.071c-.39.391-1.023.391-1.413 0-.392-.391-.392-1.023-.001-1.414l3.536-3.535 1.414 1.414-3.536 3.535zm-1.415-5.657c-.391.391-1.022.391-1.414.001-.391-.391-.39-1.024 0-1.414l1.415-1.414 1.413 1.413-1.414 1.414z"/></svg>완성 사이즈 (mm)</h2>
           <div class="inputs" id="inputs"></div>
           <p class="error" id="error" hidden></p>
 
-          <h2 class="label">용지</h2>
+          <div class="presets-box">
+            <h3 class="presets-title"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path fill="#FFAC33" d="M32.938 15.651C32.792 15.26 32.418 15 32 15H19.925L26.89 1.458c.219-.426.106-.947-.271-1.243C26.437.071 26.218 0 26 0c-.233 0-.466.082-.653.243L18 6.588 3.347 19.243c-.316.273-.43.714-.284 1.105S3.582 21 4 21h12.075L9.11 34.542c-.219.426-.106.947.271 1.243.182.144.401.215.619.215.233 0 .466-.082.653-.243L18 29.412l14.653-12.655c.317-.273.43-.714.285-1.106z"/></svg>원하는 사이즈가 특별히 없다면?</h3>
+            <div class="presets" id="presets"></div>
+          </div>
+
+          <h2 class="section section-quiet">용지</h2>
           <div class="papers" id="papers"></div>
 
-          <button type="button" id="download" class="download">패턴 PDF 다운로드</button>
-          <p class="print-check">
-            <strong>3cm 체크해보세요!</strong>
-            PDF 첫 장(안내 페이지) 오른쪽 위에 빨간 정사각형이 있습니다. 인쇄한 뒤 자로 재서 한 변이 3cm면 배율이 맞은 것입니다.
-            3cm가 아니면 &ldquo;페이지에 맞춤&rdquo;을 끄고 배율 100%로 다시 인쇄하세요.
-          </p>
+          <button type="button" id="download" class="download">PDF 다운로드</button>
+          <p class="print-check">출력 후 3cm를 꼭 확인하세요!</p>
         </section>
 
-        <!-- 오른쪽: 입력에 따라 즉시 갱신되는 결과 -->
-        <section class="card panel-result" aria-label="미리보기">
-          <h2 class="label">완성 예상 모습</h2>
+        <section class="panel" aria-labelledby="preview-heading">
+          <h2 class="section" id="preview-heading"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path fill="#9AAAB4" d="M27.388 24.642L24.56 27.47l-4.95-4.95 2.828-2.828z"/><path fill="#66757F" d="M34.683 29.11l-5.879-5.879c-.781-.781-2.047-.781-2.828 0l-2.828 2.828c-.781.781-.781 2.047 0 2.828l5.879 5.879c1.562 1.563 4.096 1.563 5.658 0 1.56-1.561 1.559-4.094-.002-5.656z"/><circle fill="#8899A6" cx="13.586" cy="13.669" r="13.5"/><circle fill="#BBDDF5" cx="13.586" cy="13.669" r="9.5"/></svg>미리보기</h2>
           <div class="shape" id="shape"></div>
-
-          <h2 class="label">전개도 미리보기</h2>
-          <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
-          <div class="preview" id="preview"></div>
-          <ul class="legend">
-            <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
-            <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
-            <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
-            <li><span class="swatch swatch-fold"></span>접힘선 — 접어서 옆면·바닥을 만듭니다</li>
-            <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
-          </ul>
         </section>
       </div>
+
+      <section class="panel panel-wide" aria-labelledby="pattern-heading">
+        <div class="section-row">
+          <h2 class="section" id="pattern-heading"><svg class="icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path fill="#F4900C" d="M29.879 33.879C31.045 35.045 32.9 35.1 34 34s1.045-2.955-.121-4.121L12.121 8.121C10.955 6.955 9.1 6.9 8 8s-1.045 2.955.121 4.121l21.758 21.758z"/><path fill="#66757F" d="M22 3s-6-3-11 2l-7 7s-1-1-2 0l-1 1s-1 1 0 2l4 4s1 1 2 0l1-1s1-1 0-2l-.078-.078c.77-.743 1.923-1.5 3.078-.922l4-4s-1-3 1-5 3-2 5-2 1-1 1-1z"/></svg>패턴</h2>
+          <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
+        </div>
+        <div class="preview" id="preview"></div>
+        <ul class="legend">
+          <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
+          <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
+          <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
+          <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
+        </ul>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

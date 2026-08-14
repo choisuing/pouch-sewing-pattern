@@ -4,16 +4,21 @@
  * 구분선(--line)은 장식용이라 대비 기준을 적용하지 않는다.
  */
 :root {
-  --bg: #fbf7f0;          /* 따뜻한 종이색 */
+  --bg: #ffffff;
   --surface: #ffffff;
-  --text: #2b2118;        /* 카드 위 15.75:1 */
-  --muted: #6e6055;       /* 카드 위 6.06:1 */
-  --accent: #c2410c;      /* 테라코타, 흰 글자 위 5.18:1 */
+  --text: #2b2118;
+  --muted: #6e6055;
+  --accent: #c2410c;
   --accent-hover: #9a3412;
-  --info: #0e7490;        /* 카드 위 5.36:1 */
-  --danger: #b42318;      /* 카드 위 6.57:1 */
-  --field-line: #a18e73;  /* 입력칸 테두리, 흰 배경 위 3.17:1 */
-  --line: #e7ded0;        /* 장식용 구분선 */
+  --info: #0e7490;
+  --danger: #b42318;
+  --field-line: #a18e73;
+  --line: #e7ded0;
+
+  /* 디자인 시안의 영역별 바탕색 */
+  --tint-presets: #fdfcef;
+  --tint-preview: #f2f7fb;
+  --tint-pattern: #faf6ee;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -58,104 +63,81 @@ body {
 }
 
 .page {
-  max-width: 1120px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: var(--space-5) var(--space-4) 64px;
+  padding: var(--space-6) var(--space-5) 64px;
 }
 
+/* 머리말 */
 .head h1 {
-  font-size: 26px;
+  font-size: 25px;
+  font-weight: 400;
   line-height: 1.35;
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-3);
   letter-spacing: -0.01em;
 }
+.head h1 strong { font-weight: 800; }
+.head-tail { font-size: 18px; }
+
 .sub {
-  margin: 0 0 var(--space-5);
+  margin: 0;
   color: var(--muted);
   font-size: 14px;
   max-width: 60ch;
 }
 
-/* 좁은 화면에서는 한 컬럼으로 쌓고, 넓어지면 입력 | 결과 두 칸으로 나눈다. */
+/* 섹션 제목 — 아이콘과 글자를 한 줄에 */
+.section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 var(--space-4);
+}
+.section-quiet { font-size: 14px; margin-top: var(--space-5); }
+.icon { width: 20px; height: 20px; flex: none; }
+
+.section-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.section-row .section { margin-bottom: 0; }
+
+/* 좁은 화면에서는 한 컬럼으로 쌓고, 넓어지면 입력 | 미리보기 두 칸으로 나눈다. */
 .workspace {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
 }
 
-@media (min-width: 1024px) {
-  .workspace {
-    grid-template-columns: 380px minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-5);
-  }
-  /* 결과를 훑는 동안에도 치수를 고칠 수 있도록 붙여 둔다. */
-  .panel-input {
-    position: sticky;
-    top: var(--space-5);
-  }
+@media (min-width: 900px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-}
-
-.label {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-  margin: var(--space-5) 0 var(--space-3);
-}
-.label:first-child { margin-top: 0; }
-
-/* 프리셋 */
-.presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.preset {
-  min-height: var(--tap);
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 999px;
-  padding: var(--space-2) var(--space-4);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color var(--speed), background-color var(--speed), color var(--speed);
-}
-.preset:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #fdf5f0;
+.panel-wide {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
 }
 
 /* 치수 입력 */
 .inputs { display: grid; gap: var(--space-3); }
-/*
- * 세 자리 숫자를 넣는 칸이라 넓어질 이유가 없다. 200px에서 멈추고
- * 남는 공간은 비워 둔다 (justify-content: start).
- */
 .input-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 200px) auto;
+  grid-template-columns: 60px minmax(0, 200px) auto;
   justify-content: start;
   gap: var(--space-3);
   align-items: center;
 }
-
-/* 아주 좁은 화면에서는 단위 안내를 입력칸 아래로 내려 폭을 확보한다. */
-@media (max-width: 400px) {
-  .input-row {
-    grid-template-columns: 60px minmax(0, 1fr);
-    gap: var(--space-1) var(--space-3);
-  }
-  .input-hint { grid-column: 2; }
-}
-.input-name { font-size: 14px; font-weight: 600; }
+.input-name { font-size: 14px; }
 .input-row input {
-  min-height: 48px;
+  min-height: 46px;
   border: 1px solid var(--field-line);
   border-radius: var(--radius);
   padding: 0 var(--space-3);
@@ -169,14 +151,18 @@ body {
 .input-row input:hover { border-color: var(--accent); }
 /*
  * outline을 지우지 않는다. 고대비 모드에서는 box-shadow가 무시되므로,
- * 그림자만 남기면 포커스가 통째로 사라진다. 그림자는 거들 뿐이고
- * 실제 포커스 표시는 위쪽 :focus-visible 규칙의 outline이 담당한다.
+ * 그림자만 남기면 포커스가 통째로 사라진다.
  */
 .input-row input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.14);
 }
-.input-hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.input-hint { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+@media (max-width: 400px) {
+  .input-row { grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-1) var(--space-3); }
+  .input-hint { grid-column: 2; }
+}
 
 .error {
   color: var(--danger);
@@ -187,6 +173,40 @@ body {
   border-left: 3px solid var(--danger);
   border-radius: 0 var(--radius) var(--radius) 0;
 }
+
+/* 프리셋 */
+.presets-box {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--tint-presets);
+  border: 1px solid #f0edd5;
+  border-radius: var(--radius-lg);
+}
+.presets-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 var(--space-3);
+}
+.presets { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.preset {
+  min-height: var(--tap);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--speed), filter var(--speed);
+}
+.preset:hover { border-color: var(--accent); filter: brightness(0.97); }
+/* 시안의 파스텔 배경. 글자는 --text라 어느 쪽이든 대비가 12:1을 넘는다. */
+.preset-1 { background: #fce7f0; }
+.preset-2 { background: #e3f5e4; }
+.preset-3 { background: #e9e7f8; }
 
 /* 용지 선택 — 라벨 전체가 클릭 대상이 되도록 키운다 */
 .papers { display: flex; gap: var(--space-2); flex-wrap: wrap; }
@@ -203,46 +223,28 @@ body {
   transition: border-color var(--speed), background-color var(--speed);
 }
 .paper-option:hover { border-color: var(--accent); }
-.paper-option:has(input:checked) {
-  border-color: var(--accent);
-  background: #fdf5f0;
-}
-.paper-option input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
+.paper-option:has(input:checked) { border-color: var(--accent); background: #fdf5f0; }
+.paper-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .paper-count { color: var(--muted); font-size: 13px; }
 
 /* 결과 */
 .shape,
 .preview {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   padding: var(--space-4);
   display: flex;
   justify-content: center;
-  background: var(--bg);
 }
-.shape svg { max-width: 100%; max-height: 260px; height: auto; }
-.preview {
-  padding: var(--space-6) var(--space-5);
-  min-height: 200px;
-}
+.shape { background: var(--tint-preview); }
+.shape svg { max-width: 100%; max-height: 300px; height: auto; }
+.preview { background: var(--tint-pattern); padding: var(--space-6) var(--space-5); min-height: 200px; }
 .preview svg { max-width: 100%; height: auto; }
 
-.preview-summary {
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--info);
-}
+.preview-summary { margin: 0; font-size: 14px; color: var(--muted); }
 
 .legend {
   list-style: none;
-  margin: var(--space-3) 0 0;
+  margin: var(--space-4) 0 0;
   padding: 0;
   display: grid;
   gap: var(--space-2);
@@ -251,11 +253,10 @@ body {
 }
 .legend li { display: flex; align-items: center; gap: var(--space-2); }
 
+/* 아래 견본색은 preview.ts가 그리는 선과 같은 값을 써야 한다. */
 .swatch { flex: none; width: 26px; height: 0; }
 .swatch-cut { border-top: 2px solid #222; }
 .swatch-seam { border-top: 2px dashed #b98a4b; }
-.swatch-fold { border-top: 2px dashed #888; }
-/* 아래 견본색은 preview.ts / shape.ts가 그리는 선과 같은 값을 써야 한다. */
 .swatch-tile { border-top: 2px dashed #2a7387; }
 .swatch-seam-band {
   height: 12px;
@@ -284,14 +285,8 @@ body {
 .download:disabled { background: #c9beb1; cursor: not-allowed; }
 
 .print-check {
-  margin: var(--space-3) 0 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid #f0d5cd;
-  border-left: 4px solid var(--danger);
-  border-radius: var(--radius);
-  background: #fdf6f4;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text);
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--danger);
 }
-.print-check strong { color: var(--danger); }

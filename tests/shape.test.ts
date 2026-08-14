@@ -135,3 +135,18 @@ describe('renderShapeSvg — 라벨이 그림 밖으로 넘치지 않는다', ()
     }
   });
 });
+
+describe('renderShapeSvg — 지퍼 위치 안내', () => {
+  it('지퍼가 어디인지 글자로 알려준다', () => {
+    const svg = renderShapeSvg(cosmetic);
+    expect(svg).toContain('class="zipper-label"');
+    expect(svg).toContain('여기가 지퍼');
+  });
+
+  it('지퍼 라벨이 그림 위쪽에 놓인다', () => {
+    const svg = renderShapeSvg(cosmetic);
+    const label = Number(svg.match(/class="zipper-label"[^>]*y="([\d.]+)"/)![1]);
+    const front = Number(svg.match(/class="face-front" points="[\d.]+,([\d.]+)/)![1]);
+    expect(label).toBeLessThan(front);
+  });
+});

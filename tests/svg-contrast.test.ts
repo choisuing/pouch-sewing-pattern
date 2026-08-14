@@ -58,9 +58,8 @@ describe('전개도 미리보기 — 대비', () => {
 
   it('페이지 경계선과 접힘선이 서로 구별될 만큼 다르다', () => {
     const tile = colorOf(previewSvg, 'page-tile', 'stroke');
-    const fold = previewSvg.match(/stroke="(#[0-9a-fA-F]{3,6})" stroke-width="1" stroke-dasharray="8 5"/);
-    expect(fold?.[1]).toBeDefined();
-    expect(contrast(tile, fold![1]!)).toBeGreaterThan(1.4);
+    const fold = colorOf(previewSvg, 'fold-line', 'stroke');
+    expect(contrast(tile, fold)).toBeGreaterThan(1.4);
   });
 });
 

@@ -111,6 +111,12 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     dimLabel(x0 + W + dx + font * 0.4, y0 + H - dy / 2 + font * 0.4, `${round1(D)}mm`, 'start');
 
   // 오른쪽은 바닥폭 라벨이 앉을 자리를 더 준다. 일반 여백만 두면 "200mm"가 잘린다.
+  // 지퍼가 어느 면에 달리는지 그림만 봐서는 알기 어려워 글자로 짚어 준다.
+  const zipperLabel =
+    `<text class="zipper-label" x="${round1(backTopLeft.x + (backTopRight.x - backTopLeft.x) / 2)}"` +
+    ` y="${round1(backTopLeft.y - font * 0.5)}" text-anchor="middle" font-size="${round1(font)}"` +
+    ` fill="#555">${escapeXml('여기가 지퍼')}</text>`;
+
   const viewWidth = spanX + pad + rightPad;
   const viewHeight = H + dy + 2 * pad;
 
@@ -122,6 +128,7 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     faces,
     hiddenEdges,
     zipper,
+    zipperLabel,
     labels,
     `</svg>`,
   ].join('');
