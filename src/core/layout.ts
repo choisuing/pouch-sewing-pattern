@@ -134,10 +134,28 @@ export function buildLayout(dimensions: Dimensions): Layout {
     { xMm: 0, yMm: topBandBottom },
   ];
 
+  /*
+   * 접힘선은 재단선이 아니라 완성선을 기준으로 잡는다. 밴드 높이는
+   * 재단 치수(시접 포함)라서 그 경계를 그대로 쓰면 시접만큼 밀린다.
+   * 완성 밴드 높이는 윗단 D/2 - Z/2, 앞뒤판 H, 바닥 D이고,
+   * 시작점은 위쪽 시접 S부터다.
+   */
+  const foldLeft = S + sideInsetMm;
+  const foldRight = totalWidthMm - S - sideInsetMm;
+  const foldTop = S;
+  const foldBottom = total - S;
+
+  const finishedBandHeights = [D / 2 - Z / 2, H, D, H];
   const foldLinesMm: Line[] = [
-    { x1Mm: left, y1Mm: 0, x2Mm: left, y2Mm: total },
-    { x1Mm: right, y1Mm: 0, x2Mm: right, y2Mm: total },
+    { x1Mm: foldLeft, y1Mm: foldTop, x2Mm: foldLeft, y2Mm: foldBottom },
+    { x1Mm: foldRight, y1Mm: foldTop, x2Mm: foldRight, y2Mm: foldBottom },
   ];
+
+  let foldY = foldTop;
+  for (const height of finishedBandHeights) {
+    foldY += height;
+    foldLinesMm.push({ x1Mm: foldLeft, y1Mm: foldY, x2Mm: foldRight, y2Mm: foldY });
+  }
 
   return {
     dimensions,

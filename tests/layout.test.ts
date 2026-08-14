@@ -118,14 +118,14 @@ describe('buildLayout — 외곽선과 접힘선', () => {
     expect(hasCorner).toBe(true);
   });
 
-  it('접힘선이 좌우 2개이며 전체 높이를 관통한다', () => {
-    expect(layout.foldLinesMm).toHaveLength(2);
-    for (const line of layout.foldLinesMm) {
-      expect(line.x1Mm).toBe(line.x2Mm);
-      expect(line.y1Mm).toBe(0);
-      expect(line.y2Mm).toBe(layout.totalHeightMm);
+  it('세로 접힘선이 완성 높이를 관통한다', () => {
+    const vertical = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm);
+    expect(vertical).toHaveLength(2);
+    for (const line of vertical) {
+      expect(line.y1Mm).toBe(SEAM_MM);
+      expect(line.y2Mm).toBe(layout.totalHeightMm - SEAM_MM);
     }
-    expect(layout.foldLinesMm.map((l) => l.x1Mm)).toEqual([70, 360]);
+    expect(vertical.map((l) => l.x1Mm)).toEqual([80, 350]);
   });
 });
 
@@ -223,5 +223,52 @@ describe('buildLayout — 입력 범위 하한', () => {
     expect(topFront.heightMm).toBeGreaterThan(2 * SEAM_MM);
 
     expect(shoelaceArea(layout.seamLineMm)).toBeGreaterThan(0);
+  });
+});
+
+describe('buildLayout — 접힘선은 완성선 기준이다', () => {
+  const layout = buildLayout(travel);   // 270 x 140 x 100
+
+  it('세로 접힘선 2개, 가로 접힘선 4개가 있다', () => {
+    const vertical = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm);
+    const horizontal = layout.foldLinesMm.filter((l) => l.y1Mm === l.y2Mm);
+    expect(vertical).toHaveLength(2);
+    expect(horizontal).toHaveLength(4);
+  });
+
+  it('세로 접힘선이 시접 안쪽 1/2 b 자리에 있다', () => {
+    // 재단선 끝이 아니라 완성선에서 b/2 들어온 자리. S + b/2 = 10 + 70 = 80
+    const xs = layout.foldLinesMm.filter((l) => l.x1Mm === l.x2Mm).map((l) => l.x1Mm).sort((a, b) => a - b);
+    expect(xs).toEqual([80, 350]);
+  });
+
+  it('가로 접힘선이 완성 밴드 경계에 있다', () => {
+    // 완성 밴드 높이 45 / 140 / 100 / 140 / 45, 시작은 시접 10부터
+    const ys = layout.foldLinesMm.filter((l) => l.y1Mm === l.y2Mm).map((l) => l.y1Mm).sort((a, b) => a - b);
+    expect(ys).toEqual([55, 195, 295, 435]);
+  });
+
+  it('접힘선이 시접 영역을 넘지 않는다', () => {
+    for (const line of layout.foldLinesMm) {
+      for (const [x, y] of [[line.x1Mm, line.y1Mm], [line.x2Mm, line.y2Mm]]) {
+        expect(x).toBeGreaterThanOrEqual(SEAM_MM);
+        expect(y).toBeGreaterThanOrEqual(SEAM_MM);
+        expect(x!).toBeLessThanOrEqual(layout.totalWidthMm - SEAM_MM);
+        expect(y!).toBeLessThanOrEqual(layout.totalHeightMm - SEAM_MM);
+      }
+    }
+  });
+
+  it('가로 접힘선 간격이 완성 밴드 높이와 같다', () => {
+    for (const dims of seamCases) {
+      const l = buildLayout(dims);
+      const ys = l.foldLinesMm.filter((f) => f.y1Mm === f.y2Mm).map((f) => f.y1Mm).sort((a, b) => a - b);
+      const { heightMm: b, depthMm: c } = dims;
+      const top = c / 2 - 5;  // 1/2 c - 1/2 Z
+      expect(ys[0]).toBeCloseTo(SEAM_MM + top, 9);
+      expect(ys[1]! - ys[0]!).toBeCloseTo(b, 9);
+      expect(ys[2]! - ys[1]!).toBeCloseTo(c, 9);
+      expect(ys[3]! - ys[2]!).toBeCloseTo(b, 9);
+    }
   });
 });

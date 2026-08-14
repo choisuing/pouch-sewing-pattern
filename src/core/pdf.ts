@@ -238,16 +238,9 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
 
     drawPolygon(ctx, layout.outlineMm, 1);
     drawSeamLine(ctx, layout.seamLineMm);
+    // 접힘선은 layout이 완성선 기준으로 계산해 둔다. 밴드 경계로 다시
+    // 그리면 시접만큼 밀린 자리에 선이 생긴다.
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);
-    for (const band of layout.bands) {
-      if (band.yMm === 0) continue;
-      drawFoldLine(ctx, {
-        x1Mm: band.xMm,
-        y1Mm: band.yMm,
-        x2Mm: band.xMm + band.widthMm,
-        y2Mm: band.yMm,
-      });
-    }
 
     drawAlignmentMarks(ctx, font);
     drawPatternNote(ctx, boldFont);
