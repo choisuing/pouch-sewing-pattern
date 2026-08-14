@@ -53,6 +53,91 @@ export function patternNotePointMm(pagination: Pagination): { xMm: number; yMm: 
   };
 }
 
+export interface JoinMark {
+  /** 이 선이 붙어 있는 인쇄 영역 가장자리. */
+  readonly edge: 'left' | 'top';
+  readonly x1Mm: number;
+  readonly y1Mm: number;
+  readonly x2Mm: number;
+  readonly y2Mm: number;
+  /** 이 선 너머로 이어지는 이웃 페이지의 칸 번호. */
+  readonly neighborLabel: string;
+  /** 칸 번호를 찍을 자리. 잘라 버리는 쪽에 두면 붙이는 동안 읽을 수 없다. */
+  readonly labelXMm: number;
+  readonly labelYMm: number;
+}
+
+/** ▼ 마크의 팔 길이 (mm). */
+const JOIN_ARM_MM = 4;
+
+/**
+ * 이어 붙일 때 잘라낼 자리 (페이지 프레임 좌표, mm).
+ *
+ * 이웃 페이지끼리는 PAGE_OVERLAP_MM만큼 겹쳐 있다. 장마다 왼쪽과 위쪽
+ * 겹침만 잘라내면 나머지 변은 손대지 않고도 딱 맞물린다. 예를 들어 A4
+ * 3열에서 A1은 도안 0~194를, A2는 184~378을 담는데, A2의 왼쪽 10mm를
+ * 잘라내면 194~378이 되어 A1의 끝과 정확히 만난다. 그래서 오른쪽·아래에는
+ * 선을 긋지 않는다 — 자를 일이 없다.
+ */
+export function joinMarksFor(pagination: Pagination, page: Page): JoinMark[] {
+  const labelAt = (row: number, col: number) =>
+    pagination.pages.find((p) => p.row === row && p.col === col)?.gridLabel;
+
+  const marks: JoinMark[] = [];
+
+  if (page.col > 0) {
+    const neighborLabel = labelAt(page.row, page.col - 1);
+    if (neighborLabel !== undefined) {
+      const xMm = PAGE_MARGIN_MM + PAGE_OVERLAP_MM;
+      marks.push({
+        edge: 'left',
+        x1Mm: xMm,
+        y1Mm: PAGE_MARGIN_MM,
+        x2Mm: xMm,
+        y2Mm: pagination.pageHeightMm - PAGE_MARGIN_MM,
+        neighborLabel,
+        labelXMm: xMm + 2,
+        labelYMm: pagination.pageHeightMm / 2 - JOIN_ARM_MM - 2,
+      });
+    }
+  }
+
+  if (page.row > 0) {
+    const neighborLabel = labelAt(page.row - 1, page.col);
+    if (neighborLabel !== undefined) {
+      const yMm = PAGE_MARGIN_MM + PAGE_OVERLAP_MM;
+      marks.push({
+        edge: 'top',
+        x1Mm: PAGE_MARGIN_MM,
+        y1Mm: yMm,
+        x2Mm: pagination.pageWidthMm - PAGE_MARGIN_MM,
+        y2Mm: yMm,
+        neighborLabel,
+        labelXMm: pagination.pageWidthMm / 2 + JOIN_ARM_MM + 2,
+        labelYMm: yMm + 5,
+      });
+    }
+  }
+
+  return marks;
+}
+
+/**
+ * 칸 번호를 찍을 자리 (페이지 프레임 좌표, mm).
+ *
+ * 잘라내는 쪽에 두면 이어 붙이는 순간 번호가 사라진다. 자르는 선이 있는
+ * 방향으로 겹침 폭만큼 들여 놓는다. 자를 데가 없는 첫 칸은 그대로 둔다.
+ */
+export function gridLabelPointMm(pagination: Pagination, page: Page): { xMm: number; yMm: number } {
+  const marks = joinMarksFor(pagination, page);
+  const trimLeftMm = marks.some((m) => m.edge === 'left') ? PAGE_OVERLAP_MM : 0;
+  const trimTopMm = marks.some((m) => m.edge === 'top') ? PAGE_OVERLAP_MM : 0;
+  return {
+    xMm: PAGE_MARGIN_MM + trimLeftMm + 2,
+    yMm: PAGE_MARGIN_MM + trimTopMm + 6,
+  };
+}
+
 const CUT_COLOR = rgb(0, 0, 0);
 const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
 const MARK_COLOR = rgb(0.2, 0.2, 0.2);
@@ -149,7 +234,8 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
     });
   }
 
-  const labelPoint = toFramePoint(pagination, PAGE_MARGIN_MM + 2, PAGE_MARGIN_MM + 6);
+  const labelMm = gridLabelPointMm(pagination, page);
+  const labelPoint = toFramePoint(pagination, labelMm.xMm, labelMm.yMm);
   ctx.pdfPage.drawText(page.gridLabel, {
     x: labelPoint.x,
     y: labelPoint.y,
@@ -157,6 +243,61 @@ function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
     font,
     color: MARK_COLOR,
   });
+}
+
+/**
+ * 이어 붙임 안내선. 잘라낼 자리를 긴 점선으로 긋고, 버릴 쪽을 향한 ▼와
+ * 그 너머로 이어지는 이웃 칸 번호를 붙인다.
+ *
+ * 색은 맞춤표·칸 번호와 같은 MARK_COLOR를 쓴다. 도안 선(재단선 검정 실선,
+ * 완성선 2,2 점선, 접힘선 연회색 4,4 점선)이 아니라 조립 표시라는 걸
+ * 색과 점선 간격으로 함께 가른다.
+ *
+ * ▼는 글자가 아니라 선으로 그린다. 서브셋 폰트에 없는 글자를 쓰면 그
+ * 자리가 비어 나오기 때문이다. 글자는 이웃 칸 번호(A~Z, 0~9)뿐이다.
+ */
+function drawJoinMarks(ctx: PageContext, font: PDFFont) {
+  const { pagination, page } = ctx;
+  const armMm = JOIN_ARM_MM;
+
+  for (const mark of joinMarksFor(pagination, page)) {
+    ctx.pdfPage.drawLine({
+      start: toFramePoint(pagination, mark.x1Mm, mark.y1Mm),
+      end: toFramePoint(pagination, mark.x2Mm, mark.y2Mm),
+      thickness: 0.5,
+      color: MARK_COLOR,
+      dashArray: [6, 3],
+    });
+
+    // ▼의 꼭짓점은 잘라 버리는 쪽에 둔다. 가장자리 바깥을 가리키는 셈이다.
+    const midXMm = (mark.x1Mm + mark.x2Mm) / 2;
+    const midYMm = (mark.y1Mm + mark.y2Mm) / 2;
+    const isLeft = mark.edge === 'left';
+    const apex = isLeft
+      ? { xMm: mark.x1Mm - armMm, yMm: midYMm }
+      : { xMm: midXMm, yMm: mark.y1Mm - armMm };
+    const wings = isLeft
+      ? [{ xMm: mark.x1Mm, yMm: midYMm - armMm }, { xMm: mark.x1Mm, yMm: midYMm + armMm }]
+      : [{ xMm: midXMm - armMm, yMm: mark.y1Mm }, { xMm: midXMm + armMm, yMm: mark.y1Mm }];
+
+    for (const wing of wings) {
+      ctx.pdfPage.drawLine({
+        start: toFramePoint(pagination, apex.xMm, apex.yMm),
+        end: toFramePoint(pagination, wing.xMm, wing.yMm),
+        thickness: 0.5,
+        color: MARK_COLOR,
+      });
+    }
+
+    const labelPoint = toFramePoint(pagination, mark.labelXMm, mark.labelYMm);
+    ctx.pdfPage.drawText(mark.neighborLabel, {
+      x: labelPoint.x,
+      y: labelPoint.y,
+      size: 9,
+      font,
+      color: MARK_COLOR,
+    });
+  }
 }
 
 /**
@@ -243,6 +384,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);
 
     drawAlignmentMarks(ctx, font);
+    drawJoinMarks(ctx, font);
     drawPatternNote(ctx, boldFont);
 
   }
