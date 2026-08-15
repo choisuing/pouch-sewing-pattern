@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 import { PRESETS, type Preset } from './core/constants';
 import { validateDimensions } from './core/dimensions';
 import { buildLayout, halveOnFold } from './core/layout';

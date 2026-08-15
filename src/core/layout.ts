@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 import { SEAM_MM, ZIPPER_ALLOWANCE_MM } from './constants';
 import type { Dimensions } from './dimensions';
 

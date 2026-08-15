@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 import type { Layout } from './layout';
 
 export type PaperSize = 'a4' | 'a3';

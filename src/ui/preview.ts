@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 import { centerXMm, patternTitlePointMm, type Layout, type Point } from '../core/layout';
 import type { Pagination } from '../core/tiling';
 import { patternTitle } from '../core/dimensions';

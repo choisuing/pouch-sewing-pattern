@@ -2,6 +2,8 @@
 
 완성 치수(가로·높이·바닥폭)를 입력하면 지퍼 사각 파우치의 전개도를 1:1 실치수 PDF로 만들어주는 정적 웹 도구.
 
+**바로 쓰기 → https://choisuing.github.io/box-pouch-pattern/**
+
 ## 쓰는 법
 
 ```bash
@@ -158,3 +160,15 @@ sips -Z 800 -s format jpeg -s formatOptions 70 원본.jpg --out src/assets/pouch
 ```
 
 `<img>`의 `width`·`height` 속성도 새 크기로 함께 고친다. 비워 두면 사진이 늦게 뜰 때 글이 아래로 밀린다.
+
+## 라이선스
+
+코드는 [MIT](LICENSE). 마음대로 쓰고 고치고 배포해도 된다.
+
+**이 도구로 만든 도안은 여러분 것이다.** 출력물에는 아무 제약이 없다. MIT는 이 저장소의 코드에만 적용된다.
+
+폰트·아이콘 등 함께 담긴 자산은 각자의 라이선스를 따른다. [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)를 참고할 것.
+
+## 배포
+
+`main`에 올라오면 GitHub Actions가 테스트를 돌리고 빌드해 Pages에 올린다 (`.github/workflows/deploy.yml`). 테스트나 타입 검사가 깨지면 배포되지 않는다.

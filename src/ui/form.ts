@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 import {
   DIMENSION_ORDER,
   FIELD_LABELS,

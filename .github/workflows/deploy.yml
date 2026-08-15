@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 choisuing
+
+# main에 올라오면 빌드해서 GitHub Pages에 배포한다.
+# vite.config.ts의 base가 './'라 하위 경로(/box-pouch-pattern/)에서도 그대로 돈다.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 배포에 필요한 최소 권한만 준다.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포가 겹치면 나중 것만 살린다. 진행 중인 건 끊지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 깨진 걸 올리지 않도록 테스트를 먼저 돌린다.
+      # build 스크립트가 tsc --noEmit을 함께 돌리므로 타입 검사도 여기서 걸린다.
+      - run: npm test
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

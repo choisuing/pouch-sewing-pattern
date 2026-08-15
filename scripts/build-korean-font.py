@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (C) 2026 choisuing
 """
 PDF에 한글을 찍기 위한 서브셋 폰트를 만든다.
 
@@ -43,13 +45,22 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "src" / "core" / "korean-font.ts"
 
 HEADER = """/*
- * PDF에 한글을 찍기 위한 폰트. Noto Sans KR (SIL Open Font License 1.1)에서
- * 이 앱이 실제로 쓰는 글자만 추려낸 서브셋이다. 본문용(400)과 도안 하단
- * 강조 문구용(700) 두 벌이다.
+ * PDF에 한글을 찍기 위한 폰트. Noto Sans KR에서 이 앱이 실제로 쓰는 글자만
+ * 추려낸 서브셋이다. 본문용(400)과 도안 하단 강조 문구용(700) 두 벌이다.
  *
  * 이 파일은 scripts/build-korean-font.py가 만든다. 직접 고치지 말 것.
  * PDF 문구를 바꿨다면 그 스크립트를 다시 돌린다.
+ *
+ * 아래 base64는 글꼴 데이터이며 이 저장소의 MIT 라이선스가 아니라
+ * SIL Open Font License 1.1을 따른다. 원 저작권 문구는 글꼴 바이너리
+ * 안에 그대로 보존되어 있다.
+ *
+ *   (c) 2014-2021 Adobe (http://www.adobe.com/),
+ *   with Reserved Font Name 'Source'.
+ *
+ * 전문은 THIRD-PARTY-NOTICES.md 참고.
  */
+/* SPDX-License-Identifier: OFL-1.1 */
 """
 
 

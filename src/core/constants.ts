@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (C) 2026 choisuing
+
 /** 시접 (mm). 도안 치수에 이미 포함되므로 사용자가 따로 더하지 않는다. */
 export const SEAM_MM = 10;
 

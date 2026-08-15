@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: MIT
+ * Copyright (C) 2026 choisuing
+ */
+
 /*
  * 색은 모두 대비를 계산해 고른 값이다. 바꿀 때는 아래 기준을 다시 확인할 것.
  *   본문/보조 텍스트 4.5:1 이상, 입력칸 테두리 3:1 이상 (WCAG 1.4.11).
