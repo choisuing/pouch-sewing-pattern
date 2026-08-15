@@ -2,7 +2,7 @@
 # Copyright (C) 2026 choisuing
 
 # main에 올라오면 빌드해서 GitHub Pages에 배포한다.
-# vite.config.ts의 base가 './'라 하위 경로(/box-pouch-pattern/)에서도 그대로 돈다.
+# vite.config.ts의 base가 './'라 하위 경로(/pouch-sewing-pattern/)에서도 그대로 돈다.
 name: Deploy to GitHub Pages
 
 on:
