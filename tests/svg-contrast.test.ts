@@ -8,7 +8,12 @@ import { renderShapeSvg } from '../src/ui/shape';
  * 미리보기 SVG의 선과 글자가 화면에서 실제로 읽히는지 지킨다.
  * 화면 팔레트를 바꿀 때 여기 배경색 상수도 함께 맞춰야 한다.
  */
-const CONTAINER_BG = '#fbf7f0'; // style.css의 --bg. .preview / .shape 배경
+/*
+ * 두 미리보기는 배경이 서로 다르다. 한 값으로 뭉뚱그리면 실제와 다른 바탕에
+ * 대고 재게 된다. style.css의 값을 바꾸면 여기도 함께 고쳐야 한다.
+ */
+const PREVIEW_BG = '#faf6ee'; // style.css의 --tint-pattern. .preview 배경
+const SHAPE_BG = '#f2f7fb';   // style.css의 --tint-preview. .shape 배경
 const PATTERN_FILL = '#fffdf5'; // 도안 안쪽 채움
 
 /** #abc와 #aabbcc를 모두 받아 6자리로 맞춘다. */
@@ -45,11 +50,11 @@ const shapeSvg = renderShapeSvg({ widthMm: 150, heightMm: 90, depthMm: 50 });
 
 describe('전개도 미리보기 — 대비', () => {
   it('페이지 번호 글자가 4.5:1 이상이다', () => {
-    expect(contrast(colorOf(previewSvg, 'tile-label', 'fill'), CONTAINER_BG)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colorOf(previewSvg, 'tile-label', 'fill'), PREVIEW_BG)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('페이지 경계선이 3:1 이상이다', () => {
-    expect(contrast(colorOf(previewSvg, 'page-tile', 'stroke'), CONTAINER_BG)).toBeGreaterThanOrEqual(3);
+    expect(contrast(colorOf(previewSvg, 'page-tile', 'stroke'), PREVIEW_BG)).toBeGreaterThanOrEqual(3);
   });
 
   it('완성선이 3:1 이상이다', () => {
@@ -77,6 +82,6 @@ describe('완성 예상 모습 — 대비', () => {
   });
 
   it('치수 글자가 4.5:1 이상이다', () => {
-    expect(contrast(colorOf(shapeSvg, 'dim-label', 'fill'), CONTAINER_BG)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colorOf(shapeSvg, 'dim-label', 'fill'), SHAPE_BG)).toBeGreaterThanOrEqual(4.5);
   });
 });
