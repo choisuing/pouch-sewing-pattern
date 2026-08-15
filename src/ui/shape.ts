@@ -17,8 +17,14 @@ const DEPTH_SCALE = 0.6;
  * 화면에서 SVG 폭이 컨테이너에 맞춰지므로 가로 폭이 곧 표시 배율이다.
  */
 const PAD_RATIO = 0.15;
+
+/**
+ * 위쪽 여백은 아래보다 좁게 잡는다. 아래에는 가로 치수 글자가 앉지만
+ * 위에는 아무것도 없다. 같은 여백을 주면 그만큼 그림만 작아 보인다.
+ */
+const TOP_PAD_RATIO = 0.04;
 const FONT_RATIO = 0.062;
-const STROKE_RATIO = 0.009;
+const STROKE_RATIO = 0.006;
 
 /**
  * 지퍼가 윗면 뒤쪽 모서리에서 앞쪽으로 들어온 비율. 앞뒤 지퍼단이
@@ -59,13 +65,14 @@ export function renderShapeSvg(dimensions: Dimensions): string {
 
   const spanX = W + dx;
   const pad = spanX * PAD_RATIO;
+  const topPad = spanX * TOP_PAD_RATIO;
   const font = spanX * FONT_RATIO;
   const stroke = spanX * STROKE_RATIO;
   const rightPad = pad + font * 4;
 
   // 앞면 좌상단을 기준으로 잡고, 깊이는 오른쪽 위로 물러난다.
   const x0 = pad;
-  const y0 = pad + dy;
+  const y0 = topPad + dy;
 
   const frontTopLeft = { x: x0, y: y0 };
   const frontTopRight = { x: x0 + W, y: y0 };
@@ -148,15 +155,8 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     ) +
     dimLabel(x0 + W + dx + font * 0.4, y0 + H - dy / 2 + font * 0.4, `${round1(D)}mm`, 'start');
 
-  // 오른쪽은 바닥폭 라벨이 앉을 자리를 더 준다. 일반 여백만 두면 "200mm"가 잘린다.
-  // 지퍼가 어느 면에 달리는지 그림만 봐서는 알기 어려워 글자로 짚어 준다.
-  const zipperLabel =
-    `<text class="zipper-label" x="${round1(backTopLeft.x + (backTopRight.x - backTopLeft.x) / 2)}"` +
-    ` y="${round1(backTopLeft.y - font * 0.5)}" text-anchor="middle" font-size="${round1(font)}"` +
-    ` fill="#555">${escapeXml('여기가 지퍼')}</text>`;
-
   const viewWidth = spanX + pad + rightPad;
-  const viewHeight = H + dy + 2 * pad;
+  const viewHeight = H + dy + topPad + pad;
 
   const label = `가로 ${round1(W)}mm, 높이 ${round1(H)}mm, 바닥폭 ${round1(D)}mm 파우치의 완성 예상 모습`;
 
@@ -170,7 +170,6 @@ export function renderShapeSvg(dimensions: Dimensions): string {
     hiddenSide,
     visibleSide,
     zipper,
-    zipperLabel,
     labels,
     `</svg>`,
   ].join('');

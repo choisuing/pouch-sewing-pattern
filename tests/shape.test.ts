@@ -137,17 +137,28 @@ describe('renderShapeSvg — 라벨이 그림 밖으로 넘치지 않는다', ()
 });
 
 describe('renderShapeSvg — 지퍼 위치 안내', () => {
-  it('지퍼가 어디인지 글자로 알려준다', () => {
+  it('글자로 풀어 쓰지 않는다', () => {
+    // 빨간 지퍼선이 윗면에서 옆면까지 이어져 어디가 지퍼인지 그림만으로 읽힌다.
     const svg = renderShapeSvg(cosmetic);
-    expect(svg).toContain('class="zipper-label"');
-    expect(svg).toContain('여기가 지퍼');
+    expect(svg).not.toContain('여기가 지퍼');
+    expect(svg).not.toContain('class="zipper-label"');
   });
 
-  it('지퍼 라벨이 그림 위쪽에 놓인다', () => {
+  it('지퍼선은 그대로 남는다', () => {
     const svg = renderShapeSvg(cosmetic);
-    const label = Number(svg.match(/class="zipper-label"[^>]*y="([\d.]+)"/)![1]);
-    const front = Number(svg.match(/class="face-front" points="[\d.]+,([\d.]+)/)![1]);
-    expect(label).toBeLessThan(front);
+    expect(svg).toContain('class="zipper"');
+    expect(svg).toContain('class="zipper-side"');
+  });
+
+  it('글자를 뺀 만큼 위쪽 여백을 줄여 그림이 커진다', () => {
+    // 라벨 자리로 비워 두던 윗공간이 남으면 그림만 작아 보인다.
+    const svg = renderShapeSvg(cosmetic);
+    const viewH = Number(svg.match(/viewBox="[\d.]+ [\d.]+ [\d.]+ ([\d.]+)"/)![1]);
+    const topY = Number(svg.match(/class="face-top" points="[\d.]+,[\d.]+ [\d.]+,([\d.]+)/)![1]);
+    const bottomY = Number(svg.match(/class="face-front" points="[^"]*?([\d.]+)"/)![1]);
+    // 위쪽 남는 공간이 아래쪽보다 넓지 않아야 한다.
+    expect(topY).toBeLessThan(viewH - bottomY + topY);
+    expect(topY / viewH).toBeLessThan(0.12);
   });
 });
 
