@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLayout } from '../src/core/layout';
+import { buildLayout, halveOnFold } from '../src/core/layout';
 import { paginate } from '../src/core/tiling';
 import { renderPreviewSvg, escapeXml, describePagination } from '../src/ui/preview';
 
@@ -185,3 +185,45 @@ describe('renderPreviewSvg — WebKit 크기 계산', () => {
     expect(style).toMatch(/(^|;)\s*width:\s*100%/);
   });
 });
+
+describe('renderPreviewSvg — 골선', () => {
+  const half = halveOnFold(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }));
+  const halfSvg = renderPreviewSvg(half, paginate(half, 'a4'));
+
+  it('절반 전개도에는 골선을 긋는다', () => {
+    expect(halfSvg).toContain('class="fold-edge"');
+  });
+
+  it('온전한 전개도에는 골선이 없다', () => {
+    expect(svg).not.toContain('class="fold-edge"');
+  });
+
+  it('골선이 아래 변을 가로지른다', () => {
+    const line = halfSvg.match(/class="fold-edge"[^>]*x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/)!;
+    const [x1, y1, x2, y2] = line.slice(1).map(Number);
+    expect(y1).toBeCloseTo(half.foldEdgeYMm!, 1);
+    expect(y2).toBeCloseTo(half.foldEdgeYMm!, 1);
+    expect(x1).toBeCloseTo(0, 1);
+    expect(x2).toBeCloseTo(half.totalWidthMm, 1);
+  });
+
+  it('글자 대신 골선 기호(반원 두 겹)를 얹는다', () => {
+    // 도안을 써 본 사람이면 아는 기호라 글자로 풀어 쓰지 않는다.
+    const arcs = [...halfSvg.matchAll(/class="fold-edge-mark"/g)];
+    expect(arcs).toHaveLength(2);
+    expect(halfSvg).not.toContain('원단 접은 자리');
+  });
+
+  it('기호가 골선 위에 얹힌다', () => {
+    const paths = [...halfSvg.matchAll(/class="fold-edge-mark" d="M ([\d.-]+),([\d.-]+) A ([\d.-]+),/g)];
+    expect(paths.length).toBeGreaterThan(0);
+    for (const m of paths) {
+      expect(Number(m[2])).toBeCloseTo(half.foldEdgeYMm!, 1);
+      // 반원 두 겹이 서로 다른 반지름이라야 겹쳐 보인다.
+      expect(Number(m[3])).toBeGreaterThan(0);
+    }
+    const radii = paths.map((m) => Number(m[3]));
+    expect(new Set(radii).size).toBe(radii.length);
+  });
+});
+

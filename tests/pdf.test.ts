@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { inflateSync } from 'node:zlib';
 import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
-import { buildLayout } from '../src/core/layout';
+import { buildLayout, halveOnFold } from '../src/core/layout';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
 import {
   MM_TO_PT,
   SCALE_SQUARE_MM,
+  JOIN_DIAMOND_MM,
+  FOLD_EDGE_LABEL,
+  foldEdgeLabelXMm,
   buildPdf,
   KOREAN_BOLD_FONT_CHARS,
   KOREAN_FONT_CHARS,
@@ -160,9 +163,9 @@ describe('축척 확인용 3cm 정사각형', () => {
     expect(pagination.pages.length).toBeGreaterThan(1);
     const doc = await PDFDocument.load(await buildPdf(layout, pagination));
 
-    expect(pageContent(doc, 0)).toContain(SCALE_SQUARE_STROKE);
+    expect(hasScaleSquare(doc, 0)).toBe(true);
     for (let i = 1; i < doc.getPageCount(); i++) {
-      expect(pageContent(doc, i)).not.toContain(SCALE_SQUARE_STROKE);
+      expect(hasScaleSquare(doc, i)).toBe(false);
     }
   });
 
@@ -186,6 +189,21 @@ describe('축척 확인용 3cm 정사각형', () => {
  * 이 둘을 구분해야 "사각형이 도안 장에 없다"를 제대로 검사할 수 있다.
  */
 const SCALE_SQUARE_STROKE = '0.85 0.1 0.1 RG';
+
+/**
+ * 3cm 사각형을 콘텐츠 스트림에서 알아보는 표식.
+ *
+ * 빨간 테두리색만으로는 못 가린다. 맞춤 마름모도 같은 빨강을 쓰기 때문이다.
+ * 대신 한 변 30mm를 pt로 옮긴 값을 찾는다. 이 길이로 선을 긋는 도형은
+ * 축척 사각형뿐이라, 색이 아니라 크기로 가려낸다.
+ */
+const SCALE_SQUARE_SIDE_PT = String(SCALE_SQUARE_MM * MM_TO_PT);
+
+/** 그 페이지에 3cm 사각형이 그려져 있는가. */
+function hasScaleSquare(doc: PDFDocument, index: number): boolean {
+  const content = pageContent(doc, index);
+  return content.includes(SCALE_SQUARE_STROKE) && content.includes(SCALE_SQUARE_SIDE_PT);
+}
 
 /** 해당 페이지의 콘텐츠 스트림을 풀어 텍스트로 돌려준다. */
 function pageContent(doc: PDFDocument, index: number): string {
@@ -245,7 +263,7 @@ describe('빨간 문구와 사각형의 분업', () => {
     for (let i = 1; i < doc.getPageCount(); i++) {
       const content = pageContent(doc, i);
       expect(content).toContain('0.85 0.1 0.1 rg');   // 문구
-      expect(content).not.toContain('0.85 0.1 0.1 RG'); // 사각형 테두리
+      expect(hasScaleSquare(doc, i)).toBe(false);       // 사각형은 없다
     }
   });
 });
@@ -256,9 +274,9 @@ describe('3cm 사각형은 첫 도안 장에 있다', () => {
     expect(pagination.pages.length).toBeGreaterThan(1);
     const doc = await PDFDocument.load(await buildPdf(layout, pagination));
 
-    expect(pageContent(doc, 0)).toContain('0.85 0.1 0.1 RG');
+    expect(hasScaleSquare(doc, 0)).toBe(true);
     for (let i = 1; i < doc.getPageCount(); i++) {
-      expect(pageContent(doc, i)).not.toContain('0.85 0.1 0.1 RG');
+      expect(hasScaleSquare(doc, i)).toBe(false);
     }
   });
 
@@ -278,63 +296,149 @@ describe('3cm 사각형은 첫 도안 장에 있다', () => {
   });
 });
 
-describe('joinMarksFor — 페이지 이어 붙임 안내선', () => {
+
+describe('joinMarksFor — 페이지 이어 붙임 표시', () => {
   const grid = paginate(layout, 'a4'); // 430 x 490 → 3열 x 2행
   const at = (row: number, col: number) => grid.pages.find((p) => p.row === row && p.col === col)!;
   const small = buildLayout({ widthMm: 100, depthMm: 40, heightMm: 50 });
   const single = paginate(small, 'a4');
+  const edges = (page: Page) => joinMarksFor(grid, page).map((m) => m.edge).sort();
 
-  it('격자가 여러 장으로 나뉜다', () => {
+  /** 페이지 프레임 좌표(mm) → 도안 좌표(mm). 두 장이 같은 자리인지 대볼 때 쓴다. */
+  const toPattern = (page: Page, xMm: number, yMm: number) => ({
+    xMm: xMm - PAGE_MARGIN_MM + page.originXMm,
+    yMm: yMm - PAGE_MARGIN_MM + page.originYMm,
+  });
+
+  it('격자가 여러 줄·여러 칸으로 나뉜다', () => {
     expect(grid.cols).toBeGreaterThan(1);
     expect(grid.rows).toBeGreaterThan(1);
   });
 
-  it('한 장짜리에는 안내선이 없다', () => {
+  it('한 장짜리에는 표시가 없다', () => {
     expect(single.pages).toHaveLength(1);
     expect(joinMarksFor(single, single.pages[0]!)).toHaveLength(0);
   });
 
-  it('첫 줄 첫 칸에는 안내선이 없다', () => {
-    expect(joinMarksFor(grid, at(0, 0))).toHaveLength(0);
+  it('이웃이 있는 모든 방향에 표시가 생긴다', () => {
+    expect(edges(at(0, 0))).toEqual(['bottom', 'right']);
+    expect(edges(at(0, 1))).toEqual(['bottom', 'left', 'right']);
+    expect(edges(at(0, 2))).toEqual(['bottom', 'left']);
+    expect(edges(at(1, 0))).toEqual(['right', 'top']);
+    expect(edges(at(1, 1))).toEqual(['left', 'right', 'top']);
+    expect(edges(at(1, 2))).toEqual(['left', 'top']);
   });
 
-  it('첫 줄 둘째 칸에는 왼쪽 안내선만 있다', () => {
-    const marks = joinMarksFor(grid, at(0, 1));
-    expect(marks.map((m) => m.edge)).toEqual(['left']);
+  it('잘라내는 쪽은 왼쪽과 위쪽뿐이다', () => {
+    for (const page of grid.pages) {
+      for (const mark of joinMarksFor(grid, page)) {
+        expect(mark.isCut).toBe(mark.edge === 'left' || mark.edge === 'top');
+      }
+    }
   });
 
-  it('둘째 줄 첫 칸에는 위쪽 안내선만 있다', () => {
-    const marks = joinMarksFor(grid, at(1, 0));
-    expect(marks.map((m) => m.edge)).toEqual(['top']);
+  it('마주 보는 두 장의 선이 도안에서 같은 자리다', () => {
+    let checked = 0;
+    for (const page of grid.pages) {
+      const right = joinMarksFor(grid, page).find((m) => m.edge === 'right');
+      const neighbor = grid.pages.find((p) => p.row === page.row && p.col === page.col + 1);
+      if (right === undefined || neighbor === undefined) continue;
+      const left = joinMarksFor(grid, neighbor).find((m) => m.edge === 'left')!;
+      expect(toPattern(page, right.x1Mm, right.y1Mm).xMm)
+        .toBeCloseTo(toPattern(neighbor, left.x1Mm, left.y1Mm).xMm, 6);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
-  it('둘째 줄 둘째 칸에는 왼쪽과 위쪽 둘 다 있다', () => {
-    const marks = joinMarksFor(grid, at(1, 1));
-    expect(marks.map((m) => m.edge).sort()).toEqual(['left', 'top']);
+  it('마주 보는 두 장의 마름모가 도안에서 같은 자리다', () => {
+    let checked = 0;
+    for (const page of grid.pages) {
+      const below = grid.pages.find((p) => p.row === page.row + 1 && p.col === page.col);
+      const bottom = joinMarksFor(grid, page).find((m) => m.edge === 'bottom');
+      if (below === undefined || bottom === undefined) continue;
+      const top = joinMarksFor(grid, below).find((m) => m.edge === 'top')!;
+      expect(bottom.diamonds).toHaveLength(top.diamonds.length);
+      for (let i = 0; i < bottom.diamonds.length; i++) {
+        const a = toPattern(page, bottom.diamonds[i]!.xMm, bottom.diamonds[i]!.yMm);
+        const b = toPattern(below, top.diamonds[i]!.xMm, top.diamonds[i]!.yMm);
+        expect(a.xMm).toBeCloseTo(b.xMm, 6);
+        expect(a.yMm).toBeCloseTo(b.yMm, 6);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
-  it('왼쪽 안내선이 인쇄 영역 왼쪽에서 겹침 폭만큼 안쪽에 세로로 선다', () => {
-    const mark = joinMarksFor(grid, at(0, 1))[0]!;
-    expect(mark.x1Mm).toBeCloseTo(PAGE_MARGIN_MM + PAGE_OVERLAP_MM, 6);
-    expect(mark.x2Mm).toBeCloseTo(mark.x1Mm, 6);
-    expect(mark.y1Mm).toBeCloseTo(PAGE_MARGIN_MM, 6);
-    expect(mark.y2Mm).toBeCloseTo(grid.pageHeightMm - PAGE_MARGIN_MM, 6);
+  it('선이 겹침 구간 한가운데에 놓인다', () => {
+    const half = PAGE_OVERLAP_MM / 2;
+    const left = joinMarksFor(grid, at(0, 1)).find((m) => m.edge === 'left')!;
+    expect(left.x1Mm).toBeCloseTo(PAGE_MARGIN_MM + half, 6);
+    const right = joinMarksFor(grid, at(0, 1)).find((m) => m.edge === 'right')!;
+    expect(right.x1Mm).toBeCloseTo(grid.pageWidthMm - PAGE_MARGIN_MM - half, 6);
+    const top = joinMarksFor(grid, at(1, 0)).find((m) => m.edge === 'top')!;
+    expect(top.y1Mm).toBeCloseTo(PAGE_MARGIN_MM + half, 6);
+    const bottom = joinMarksFor(grid, at(0, 0)).find((m) => m.edge === 'bottom')!;
+    expect(bottom.y1Mm).toBeCloseTo(grid.pageHeightMm - PAGE_MARGIN_MM - half, 6);
   });
 
-  it('위쪽 안내선이 인쇄 영역 위에서 겹침 폭만큼 안쪽에 가로로 눕는다', () => {
-    const mark = joinMarksFor(grid, at(1, 0)).find((m) => m.edge === 'top')!;
-    expect(mark.y1Mm).toBeCloseTo(PAGE_MARGIN_MM + PAGE_OVERLAP_MM, 6);
-    expect(mark.y2Mm).toBeCloseTo(mark.y1Mm, 6);
-    expect(mark.x1Mm).toBeCloseTo(PAGE_MARGIN_MM, 6);
-    expect(mark.x2Mm).toBeCloseTo(grid.pageWidthMm - PAGE_MARGIN_MM, 6);
+  it('마름모가 용지 가장자리에서 넉넉히 떨어져 있다', () => {
+    // 여백 8mm는 프린터 비인쇄 영역 몫이다. 마름모가 그 안으로 들어가면 잘릴 수 있다.
+    for (const page of grid.pages) {
+      for (const mark of joinMarksFor(grid, page)) {
+        for (const d of mark.diamonds) {
+          expect(d.xMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+          expect(d.yMm).toBeGreaterThanOrEqual(PAGE_MARGIN_MM);
+          expect(d.xMm).toBeLessThanOrEqual(grid.pageWidthMm - PAGE_MARGIN_MM);
+          expect(d.yMm).toBeLessThanOrEqual(grid.pageHeightMm - PAGE_MARGIN_MM);
+        }
+      }
+    }
+  });
+
+  it('마름모가 그 선 위에 얹혀 있다', () => {
+    for (const page of grid.pages) {
+      for (const mark of joinMarksFor(grid, page)) {
+        expect(mark.diamonds.length).toBeGreaterThan(0);
+        for (const d of mark.diamonds) {
+          if (mark.x1Mm === mark.x2Mm) expect(d.xMm).toBeCloseTo(mark.x1Mm, 6);
+          else expect(d.yMm).toBeCloseTo(mark.y1Mm, 6);
+        }
+      }
+    }
+  });
+
+  it('▼가 마름모와 겹치지 않는다', () => {
+    // 둘 다 선 위에 있어 같은 자리에 놓이면 뭉쳐 보인다.
+    let checked = 0;
+    for (const page of grid.pages) {
+      for (const mark of joinMarksFor(grid, page)) {
+        if (!mark.isCut) continue;
+        for (const d of mark.diamonds) {
+          const gap = Math.hypot(mark.arrowXMm - d.xMm, mark.arrowYMm - d.yMm);
+          expect(gap).toBeGreaterThan(JOIN_DIAMOND_MM * 2);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('▼는 자르는 선 위에 있다', () => {
+    for (const page of grid.pages) {
+      for (const mark of joinMarksFor(grid, page)) {
+        if (!mark.isCut) continue;
+        if (mark.x1Mm === mark.x2Mm) expect(mark.arrowXMm).toBeCloseTo(mark.x1Mm, 6);
+        else expect(mark.arrowYMm).toBeCloseTo(mark.y1Mm, 6);
+      }
+    }
   });
 
   it('라벨이 그 방향 이웃 페이지의 칸 번호다', () => {
-    expect(joinMarksFor(grid, at(0, 1))[0]!.neighborLabel).toBe(at(0, 0).gridLabel);
-    expect(joinMarksFor(grid, at(1, 2)).find((m) => m.edge === 'top')!.neighborLabel)
-      .toBe(at(0, 2).gridLabel);
-    expect(joinMarksFor(grid, at(1, 2)).find((m) => m.edge === 'left')!.neighborLabel)
-      .toBe(at(1, 1).gridLabel);
+    const marks = joinMarksFor(grid, at(1, 1));
+    expect(marks.find((m) => m.edge === 'left')!.neighborLabel).toBe(at(1, 0).gridLabel);
+    expect(marks.find((m) => m.edge === 'right')!.neighborLabel).toBe(at(1, 2).gridLabel);
+    expect(marks.find((m) => m.edge === 'top')!.neighborLabel).toBe(at(0, 1).gridLabel);
   });
 
   it('라벨 글자가 모두 서브셋 폰트 안에 있다', () => {
@@ -345,57 +449,6 @@ describe('joinMarksFor — 페이지 이어 붙임 안내선', () => {
         }
       }
     }
-  });
-});
-
-describe('gridLabelPointMm — 칸 번호는 잘라내는 쪽에 두지 않는다', () => {
-  const grid = paginate(layout, 'a4');
-  const at = (row: number, col: number) => grid.pages.find((p) => p.row === row && p.col === col)!;
-
-  it('자를 데가 없는 첫 칸은 인쇄 영역 모서리에 그대로 둔다', () => {
-    const point = gridLabelPointMm(grid, at(0, 0));
-    expect(point.xMm).toBeLessThan(PAGE_MARGIN_MM + PAGE_OVERLAP_MM);
-    expect(point.yMm).toBeLessThan(PAGE_MARGIN_MM + PAGE_OVERLAP_MM);
-  });
-
-  it('칸 번호가 그 장의 모든 자르는 선 안쪽에 있다', () => {
-    for (const page of grid.pages) {
-      const point = gridLabelPointMm(grid, page);
-      for (const mark of joinMarksFor(grid, page)) {
-        if (mark.edge === 'left') expect(point.xMm).toBeGreaterThan(mark.x1Mm);
-        if (mark.edge === 'top') expect(point.yMm).toBeGreaterThan(mark.y1Mm);
-      }
-    }
-  });
-
-  it('왼쪽만 자르는 장은 오른쪽으로만 밀린다', () => {
-    const first = gridLabelPointMm(grid, at(0, 0));
-    const shifted = gridLabelPointMm(grid, at(0, 1));
-    expect(shifted.xMm - first.xMm).toBeCloseTo(PAGE_OVERLAP_MM, 6);
-    expect(shifted.yMm).toBeCloseTo(first.yMm, 6);
-  });
-
-  it('위쪽만 자르는 장은 아래로만 밀린다', () => {
-    const first = gridLabelPointMm(grid, at(0, 0));
-    const shifted = gridLabelPointMm(grid, at(1, 0));
-    expect(shifted.yMm - first.yMm).toBeCloseTo(PAGE_OVERLAP_MM, 6);
-    expect(shifted.xMm).toBeCloseTo(first.xMm, 6);
-  });
-});
-
-describe('joinMarksFor — 이웃 라벨은 남기는 쪽에 둔다', () => {
-  const grid = paginate(layout, 'a4');
-
-  it('라벨이 자르는 선 안쪽(버리지 않는 쪽)에 있다', () => {
-    let checked = 0;
-    for (const page of grid.pages) {
-      for (const mark of joinMarksFor(grid, page)) {
-        if (mark.edge === 'left') expect(mark.labelXMm).toBeGreaterThan(mark.x1Mm);
-        if (mark.edge === 'top') expect(mark.labelYMm).toBeGreaterThan(mark.y1Mm);
-        checked++;
-      }
-    }
-    expect(checked).toBeGreaterThan(0);
   });
 
   it('라벨이 인쇄 영역 안에 있다', () => {
@@ -409,3 +462,91 @@ describe('joinMarksFor — 이웃 라벨은 남기는 쪽에 둔다', () => {
     }
   });
 });
+
+describe('gridLabelPointMm — 칸 번호는 잘라내는 쪽에 두지 않는다', () => {
+  const grid = paginate(layout, 'a4');
+  const at = (row: number, col: number) => grid.pages.find((p) => p.row === row && p.col === col)!;
+
+  it('자를 데가 없는 첫 칸만 밀리지 않는다', () => {
+    const half = PAGE_OVERLAP_MM / 2;
+    const first = gridLabelPointMm(grid, at(0, 0));
+    // 왼쪽만 자르는 장은 오른쪽으로만, 위쪽만 자르는 장은 아래로만 밀린다.
+    expect(gridLabelPointMm(grid, at(0, 1)).xMm - first.xMm).toBeCloseTo(half, 6);
+    expect(gridLabelPointMm(grid, at(0, 1)).yMm).toBeCloseTo(first.yMm, 6);
+    expect(gridLabelPointMm(grid, at(1, 0)).yMm - first.yMm).toBeCloseTo(half, 6);
+    expect(gridLabelPointMm(grid, at(1, 0)).xMm).toBeCloseTo(first.xMm, 6);
+  });
+
+  it('칸 번호가 그 장의 자르는 선 안쪽에 있다', () => {
+    for (const page of grid.pages) {
+      const point = gridLabelPointMm(grid, page);
+      for (const mark of joinMarksFor(grid, page)) {
+        if (!mark.isCut) continue;
+        if (mark.edge === 'left') expect(point.xMm).toBeGreaterThan(mark.x1Mm);
+        if (mark.edge === 'top') expect(point.yMm).toBeGreaterThan(mark.y1Mm);
+      }
+    }
+  });
+});
+
+describe('buildPdf — 골선', () => {
+  const half = halveOnFold(layout);
+
+  it('골선 문구에 쓰는 글자가 서브셋 폰트 안에 있다', () => {
+    expect([...FOLD_EDGE_LABEL].filter((ch) => !KOREAN_FONT_CHARS.has(ch))).toEqual([]);
+  });
+
+  it('절반 전개도를 받으면 페이지 수가 준다', () => {
+    expect(paginate(half, 'a4').pages.length).toBeLessThan(paginate(layout, 'a4').pages.length);
+  });
+
+  it('골선이 있는 장에만 골선을 그린다', async () => {
+    const pagination = paginate(half, 'a4');
+    const doc = await PDFDocument.load(await buildPdf(half, pagination));
+    // 골선은 도안 좌표 foldEdgeYMm에 있다. 그 좌표를 담은 장에만 나타난다.
+    const drawn = pagination.pages.filter((page) => {
+      const top = page.originYMm;
+      return half.foldEdgeYMm! >= top && half.foldEdgeYMm! <= top + pagination.contentHeightMm;
+    });
+    expect(drawn.length).toBeGreaterThan(0);
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
+  });
+
+  it('온전한 전개도에는 골선 문구가 없다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const withFold = await buildPdf(half, paginate(half, 'a4'));
+    const withoutFold = await buildPdf(layout, pagination);
+    // 골선 문구가 들어가면 그만큼 콘텐츠가 늘어난다. 장수를 맞춰 비교하긴 어려우니
+    // 골선 있는 쪽이 장당 평균 바이트가 더 큰지로 갈음한다.
+    const perPageWith = withFold.length / paginate(half, 'a4').pages.length;
+    const perPageWithout = withoutFold.length / pagination.pages.length;
+    expect(perPageWith).toBeGreaterThan(perPageWithout);
+  });
+});
+
+describe('foldEdgeLabelXMm — 골선 설명은 장마다 붙는다', () => {
+  const half = halveOnFold(layout);
+  const pagination = paginate(half, 'a4');
+
+  it('골선이 걸치는 모든 장에 자리가 잡힌다', () => {
+    const shown = pagination.pages.filter((p) => foldEdgeLabelXMm(pagination, p, half) !== undefined);
+    expect(shown.length).toBe(pagination.pages.length);
+    expect(shown.length).toBeGreaterThan(1);
+  });
+
+  it('그 자리가 해당 장에 실제로 보이는 구간 안이다', () => {
+    for (const page of pagination.pages) {
+      const xMm = foldEdgeLabelXMm(pagination, page, half)!;
+      expect(xMm).toBeGreaterThanOrEqual(page.originXMm);
+      expect(xMm).toBeLessThanOrEqual(page.originXMm + pagination.contentWidthMm);
+      expect(xMm).toBeGreaterThanOrEqual(0);
+      expect(xMm).toBeLessThanOrEqual(half.totalWidthMm);
+    }
+  });
+
+  it('골선이 없는 전개도에는 자리가 없다', () => {
+    const full = paginate(layout, 'a4');
+    expect(foldEdgeLabelXMm(full, full.pages[0]!, layout)).toBeUndefined();
+  });
+});
+

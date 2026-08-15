@@ -104,3 +104,30 @@ export function setPaperCount(paper: PaperSize, sheets: number | null): void {
   const el = document.getElementById(`paper-count-${paper}`);
   if (el) el.textContent = sheets === null ? '' : ` · ${sheets}장`;
 }
+
+/**
+ * 골선 체크박스. 켜면 전개도의 위쪽 절반만 내보내 인쇄 장수가 대략 반으로 준다.
+ * 원단을 접어 그 변에 대고 재단하면 펼쳤을 때 온전한 한 장이 된다.
+ */
+export function renderFoldOption(
+  container: HTMLElement,
+  checked: boolean,
+  onChange: (next: boolean) => void,
+): void {
+  container.innerHTML = '';
+
+  const label = document.createElement('label');
+  label.className = 'fold-option';
+
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.id = 'fold-half';
+  box.checked = checked;
+  box.addEventListener('change', () => onChange(box.checked));
+
+  const text = document.createElement('span');
+  text.textContent = '골선으로 출력하기';
+
+  label.append(box, text);
+  container.append(label);
+}

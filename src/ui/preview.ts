@@ -21,6 +21,8 @@ const TILE_COLOR = '#2a7387';
  * 시접색을 바꾸면 여기도 다시 계산할 것.
  */
 const SEAM_COLOR = '#94682f';
+/** 골선. 접는 자리라 재단선·완성선과 섞이면 안 된다. */
+const FOLD_EDGE_COLOR = '#b42318';
 
 /*
  * 선 두께와 글자 크기는 도안 폭에 비례시킨다. mm 고정값으로 두면 작은 도안에서
@@ -97,6 +99,30 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
 
   const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" />`;
 
+  /*
+   * 골선. 절반만 남긴 전개도의 아래 변이다. 이 변은 자르는 선이 아니라
+   * 원단 접은 자리에 얹는 선이라, 재단선과 헷갈리지 않게 따로 긋고 글자로 짚는다.
+   */
+  const foldEdge = (() => {
+    const yMm = layout.foldEdgeYMm;
+    if (yMm === undefined) return '';
+
+    // 재봉 도안에서 쓰는 골선 기호. 반원 두 겹을 선 위에 얹는다.
+    // 글자로 풀어 쓰지 않는 건 도안을 써 본 사람이면 아는 기호이기 때문이다.
+    const arcs = [1, 1.5]
+      .map((scale) => {
+        const rMm = round1(bandLabelSize * scale);
+        return `<path class="fold-edge-mark" d="M ${round1(w / 2 - rMm)},${round1(yMm)}` +
+          ` A ${rMm},${rMm} 0 0 1 ${round1(w / 2 + rMm)},${round1(yMm)}"` +
+          ` fill="none" stroke="${FOLD_EDGE_COLOR}" stroke-width="${thinStroke}" />`;
+      })
+      .join('');
+
+    return `<line class="fold-edge" x1="0" y1="${round1(yMm)}"` +
+      ` x2="${round1(w)}" y2="${round1(yMm)}"` +
+      ` stroke="${FOLD_EDGE_COLOR}" stroke-width="${round1(cutStroke * 1.2)}" />` + arcs;
+  })();
+
   const labels = layout.bands
     .map(
       (band) =>
@@ -122,6 +148,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     // 먼저 그리면 가운데가 덮이고 밖으로 나온 끝부분만 남는다.
     tiles,
     tileLabels,
+    foldEdge,
     labels,
     dims,
     `</g>`,

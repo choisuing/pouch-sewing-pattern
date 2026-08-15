@@ -329,3 +329,21 @@ body {
 @media (pointer: fine) {
   .paper-option, .download { min-height: 38px; }
 }
+
+/* 골선 선택 — 용지 선택 옆에 둔다. 둘 다 출력 방식을 정하는 자리다. */
+.fold-field { display: flex; align-items: center; }
+.fold-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.fold-option input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

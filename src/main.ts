@@ -1,10 +1,11 @@
 import { PRESETS, type Preset } from './core/constants';
 import { validateDimensions } from './core/dimensions';
-import { buildLayout } from './core/layout';
+import { buildLayout, halveOnFold } from './core/layout';
 import { paginate, type PaperSize } from './core/tiling';
 import {
   readInputs,
   renderInputs,
+  renderFoldOption,
   renderPaperOptions,
   renderPresetButtons,
   setPaperCount,
@@ -19,6 +20,7 @@ const PAGE_WARN_THRESHOLD = 20;
 const presetsEl = document.getElementById('presets')!;
 const inputsEl = document.getElementById('inputs')!;
 const papersEl = document.getElementById('papers')!;
+const foldFieldEl = document.getElementById('fold-field')!;
 const previewEl = document.getElementById('preview')!;
 const shapeEl = document.getElementById('shape')!;
 const summaryEl = document.getElementById('preview-summary')!;
@@ -26,6 +28,7 @@ const errorEl = document.getElementById('error')!;
 const downloadBtn = document.getElementById('download') as HTMLButtonElement;
 
 let paper: PaperSize = 'a4';
+let foldHalf = false;
 
 function showError(messages: readonly string[]): void {
   if (messages.length === 0) {
@@ -54,7 +57,8 @@ function refresh(): void {
   showError([]);
   shapeEl.innerHTML = renderShapeSvg(result.value);
 
-  const layout = buildLayout(result.value);
+  const full = buildLayout(result.value);
+  const layout = foldHalf ? halveOnFold(full) : full;
   const pagination = paginate(layout, paper);
   previewEl.innerHTML = renderPreviewSvg(layout, pagination);
   summaryEl.textContent = describePagination(pagination);
@@ -68,7 +72,8 @@ async function download(): Promise<void> {
   const result = validateDimensions(readInputs());
   if (!result.ok) return;
 
-  const layout = buildLayout(result.value);
+  const full = buildLayout(result.value);
+  const layout = foldHalf ? halveOnFold(full) : full;
   const pagination = paginate(layout, paper);
 
   if (pagination.pages.length > PAGE_WARN_THRESHOLD) {
@@ -92,7 +97,7 @@ async function download(): Promise<void> {
     const link = document.createElement('a');
     const { widthMm: W, depthMm: D, heightMm: H } = result.value;
     link.href = url;
-    link.download = `box-pouch-${W}x${D}x${H}-${paper}.pdf`;
+    link.download = `box-pouch-${W}x${D}x${H}-${paper}${foldHalf ? '-half' : ''}.pdf`;
     link.click();
     URL.revokeObjectURL(url);
   } catch (error) {
@@ -107,6 +112,10 @@ renderPresetButtons(presetsEl, (preset: Preset) => {
   refresh();
 });
 renderInputs(inputsEl, refresh);
+renderFoldOption(foldFieldEl, foldHalf, (next) => {
+  foldHalf = next;
+  refresh();
+});
 renderPaperOptions(papersEl, paper, (next) => {
   paper = next;
   refresh();

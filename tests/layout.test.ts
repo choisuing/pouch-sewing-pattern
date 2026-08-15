@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLayout } from '../src/core/layout';
+import { buildLayout, halveOnFold } from '../src/core/layout';
 import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
@@ -342,3 +342,100 @@ describe('buildLayout — 접힘선이 완성선을 덮지 않는다', () => {
     }
   });
 });
+
+describe('halveOnFold — 골선으로 절반만 남기기', () => {
+  /*
+   * 전개도는 바닥 한가운데를 기준으로 위아래가 거울상이다. 위쪽 절반만
+   * 출력하고 그 변을 원단 접은 자리에 놓으면 펼쳤을 때 온전한 한 장이 된다.
+   */
+  const cases: Dimensions[] = [
+    travel,
+    { widthMm: 150, depthMm: 50, heightMm: 90 },
+    { widthMm: 400, depthMm: 200, heightMm: 300 },
+  ];
+
+  it('높이는 절반이 되고 폭은 그대로다', () => {
+    for (const dims of cases) {
+      const full = buildLayout(dims);
+      const half = halveOnFold(full);
+      expect(half.totalHeightMm).toBeCloseTo(full.totalHeightMm / 2, 9);
+      expect(half.totalWidthMm).toBeCloseTo(full.totalWidthMm, 9);
+    }
+  });
+
+  it('골선 자리를 알려준다', () => {
+    for (const dims of cases) {
+      const full = buildLayout(dims);
+      const half = halveOnFold(full);
+      expect(half.foldEdgeYMm).toBeCloseTo(full.totalHeightMm / 2, 9);
+    }
+  });
+
+  it('원래 전개도에는 골선이 없다', () => {
+    expect(buildLayout(travel).foldEdgeYMm).toBeUndefined();
+  });
+
+  it('외곽선 넓이가 원래의 절반이다', () => {
+    for (const dims of cases) {
+      const full = buildLayout(dims);
+      const half = halveOnFold(full);
+      expect(shoelaceArea(half.outlineMm)).toBeCloseTo(shoelaceArea(full.outlineMm) / 2, 6);
+    }
+  });
+
+  it('완성선 넓이도 절반보다 작지만 0보다 크다', () => {
+    for (const dims of cases) {
+      const half = halveOnFold(buildLayout(dims));
+      expect(shoelaceArea(half.seamLineMm)).toBeGreaterThan(0);
+    }
+  });
+
+  it('외곽선과 완성선이 골선을 넘어가지 않는다', () => {
+    for (const dims of cases) {
+      const half = halveOnFold(buildLayout(dims));
+      for (const p of [...half.outlineMm, ...half.seamLineMm]) {
+        expect(p.yMm).toBeLessThanOrEqual(half.foldEdgeYMm! + 1e-9);
+      }
+    }
+  });
+
+  it('골선 변에는 시접이 없다', () => {
+    // 접는 자리라 시접을 두지 않는다. 완성선이 골선까지 내려와 닿아야 한다.
+    for (const dims of cases) {
+      const half = halveOnFold(buildLayout(dims));
+      const lowest = Math.max(...half.seamLineMm.map((p) => p.yMm));
+      expect(lowest).toBeCloseTo(half.foldEdgeYMm!, 9);
+    }
+  });
+
+  it('접힘선이 골선을 넘어가지 않는다', () => {
+    for (const dims of cases) {
+      const half = halveOnFold(buildLayout(dims));
+      for (const f of half.foldLinesMm) {
+        expect(Math.max(f.y1Mm, f.y2Mm)).toBeLessThanOrEqual(half.foldEdgeYMm! + 1e-9);
+      }
+    }
+  });
+
+  it('아래쪽 밴드는 사라지고 바닥은 절반만 남는다', () => {
+    const half = halveOnFold(buildLayout(travel)); // 바닥은 185~305, 골선 245
+    expect(half.bands.map((b) => b.id)).toEqual(['topFront', 'front', 'bottom']);
+    const bottom = half.bands.find((b) => b.id === 'bottom')!;
+    expect(bottom.yMm).toBeCloseTo(185, 9);
+    expect(bottom.heightMm).toBeCloseTo(60, 9);
+  });
+
+  it('치수와 좌우 들여쓰기는 그대로 들고 간다', () => {
+    const full = buildLayout(travel);
+    const half = halveOnFold(full);
+    expect(half.dimensions).toEqual(full.dimensions);
+    expect(half.sideInsetMm).toBeCloseTo(full.sideInsetMm, 9);
+  });
+
+  it('외곽선이 골선 변을 실제로 지난다', () => {
+    const half = halveOnFold(buildLayout(travel));
+    const onFold = half.outlineMm.filter((p) => Math.abs(p.yMm - half.foldEdgeYMm!) < 1e-9);
+    expect(onFold.length).toBeGreaterThanOrEqual(2);
+  });
+});
+

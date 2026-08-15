@@ -35,6 +35,11 @@ export interface Layout {
   /** 재단선 안쪽으로 시접만큼 들어간 박음질선. */
   readonly seamLineMm: readonly Point[];
   readonly foldLinesMm: readonly Line[];
+  /**
+   * 골선 자리 (mm). 절반만 남긴 전개도에만 있다. 이 변을 원단 접은 자리에
+   * 놓고 재단해 펼치면 온전한 한 장이 된다. 접는 자리라 시접이 없다.
+   */
+  readonly foldEdgeYMm?: number;
 }
 
 /**
@@ -188,3 +193,87 @@ export function buildLayout(dimensions: Dimensions): Layout {
     foldLinesMm,
   };
 }
+
+/**
+ * 반평면 `y ≤ limitMm`으로 폴리곤을 자른다 (Sutherland–Hodgman).
+ * 이 전개도의 변은 모두 수평·수직이라 자른 뒤에도 그 성질이 유지된다.
+ * 꼭짓점이 자르는 선에 정확히 얹히면 같은 점이 두 번 나올 수 있어 이어지는
+ * 중복은 걸러 낸다.
+ */
+function clipBelow(points: readonly Point[], limitMm: number): Point[] {
+  const out: Point[] = [];
+  const push = (p: Point) => {
+    const last = out[out.length - 1];
+    if (last !== undefined && Math.abs(last.xMm - p.xMm) < 1e-9 && Math.abs(last.yMm - p.yMm) < 1e-9) return;
+    out.push(p);
+  };
+
+  for (let i = 0; i < points.length; i++) {
+    const cur = points[i]!;
+    const next = points[(i + 1) % points.length]!;
+    const curIn = cur.yMm <= limitMm + 1e-9;
+    const nextIn = next.yMm <= limitMm + 1e-9;
+
+    if (curIn) push(cur);
+    if (curIn !== nextIn) {
+      const t = (limitMm - cur.yMm) / (next.yMm - cur.yMm);
+      push({ xMm: cur.xMm + (next.xMm - cur.xMm) * t, yMm: limitMm });
+    }
+  }
+
+  // 마지막 점이 첫 점과 겹치면 닫는 변이 길이 0이 된다.
+  const first = out[0];
+  const last = out[out.length - 1];
+  if (
+    out.length > 1 &&
+    first !== undefined &&
+    last !== undefined &&
+    Math.abs(first.xMm - last.xMm) < 1e-9 &&
+    Math.abs(first.yMm - last.yMm) < 1e-9
+  ) {
+    out.pop();
+  }
+  return out;
+}
+
+/**
+ * 골선 기준으로 위쪽 절반만 남긴다.
+ *
+ * 전개도는 바닥 한가운데를 기준으로 위아래가 거울상이다. 밴드 높이가 위에서
+ * 아래로 a·b·c·b·a라서 가운데를 접으면 정확히 포개진다. 절반만 인쇄해
+ * 그 변을 원단 접은 자리에 놓고 재단하면 펼쳤을 때 온전한 한 장이 나온다.
+ * 인쇄 장수는 대략 절반으로 준다.
+ *
+ * 완성선은 따로 손보지 않는다. 이미 계산된 완성선을 같은 높이에서 자르면
+ * 골선 변에는 안쪽으로 들어온 몫이 없어, 접는 자리에 시접이 없다는 규칙이
+ * 저절로 지켜진다.
+ */
+export function halveOnFold(layout: Layout): Layout {
+  const foldEdgeYMm = layout.totalHeightMm / 2;
+
+  const bands = layout.bands
+    .filter((band) => band.yMm < foldEdgeYMm - 1e-9)
+    .map((band) => ({
+      ...band,
+      heightMm: Math.min(band.heightMm, foldEdgeYMm - band.yMm),
+    }));
+
+  const foldLinesMm = layout.foldLinesMm
+    .filter((line) => Math.min(line.y1Mm, line.y2Mm) < foldEdgeYMm - 1e-9)
+    .map((line) => ({
+      ...line,
+      y1Mm: Math.min(line.y1Mm, foldEdgeYMm),
+      y2Mm: Math.min(line.y2Mm, foldEdgeYMm),
+    }));
+
+  return {
+    ...layout,
+    totalHeightMm: foldEdgeYMm,
+    bands,
+    outlineMm: clipBelow(layout.outlineMm, foldEdgeYMm),
+    seamLineMm: clipBelow(layout.seamLineMm, foldEdgeYMm),
+    foldLinesMm,
+    foldEdgeYMm,
+  };
+}
+

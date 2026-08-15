@@ -16,7 +16,7 @@ export const MM_TO_PT = 72 / 25.4;
  * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
  */
 export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
-  " !0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm세요인하확",
+  " !0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm골선세요인하확",
 );
 
 /** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
@@ -36,6 +36,9 @@ export const SCALE_SQUARE_MM = 30;
 /** 빨간 사각형 옆에 붙는 문구. */
 export const SCALE_SQUARE_LABEL = '3cm 확인하세요!';
 
+/** 골선 변에 붙이는 문구. 서브셋 폰트에 골·선이 들어 있어야 한다. */
+export const FOLD_EDGE_LABEL = '골선';
+
 /** 도안 장마다 아래쪽에 넣는 강조 문구. 굵은 서브셋 폰트로 그린다. */
 export const PATTERN_NOTE = "'실제사이즈'로 출력해주세요!";
 
@@ -53,13 +56,22 @@ export function patternNotePointMm(pagination: Pagination): { xMm: number; yMm: 
   };
 }
 
+export type JoinEdge = 'left' | 'top' | 'right' | 'bottom';
+
 export interface JoinMark {
   /** 이 선이 붙어 있는 인쇄 영역 가장자리. */
-  readonly edge: 'left' | 'top';
+  readonly edge: JoinEdge;
   readonly x1Mm: number;
   readonly y1Mm: number;
   readonly x2Mm: number;
   readonly y2Mm: number;
+  /** 이 선을 실제로 잘라내는가. 왼쪽·위쪽만 자르고 나머지는 맞추는 기준선이다. */
+  readonly isCut: boolean;
+  /** 맞춤용 마름모의 중심. 마주 보는 장의 같은 순번과 도안에서 같은 자리다. */
+  readonly diamonds: readonly { readonly xMm: number; readonly yMm: number }[];
+  /** ▼가 선에 닿는 지점. isCut일 때만 그린다. */
+  readonly arrowXMm: number;
+  readonly arrowYMm: number;
   /** 이 선 너머로 이어지는 이웃 페이지의 칸 번호. */
   readonly neighborLabel: string;
   /** 칸 번호를 찍을 자리. 잘라 버리는 쪽에 두면 붙이는 동안 읽을 수 없다. */
@@ -70,54 +82,86 @@ export interface JoinMark {
 /** ▼ 마크의 팔 길이 (mm). */
 const JOIN_ARM_MM = 4;
 
+/** 맞춤 마름모의 중심에서 꼭짓점까지 (mm). */
+export const JOIN_DIAMOND_MM = 3;
+
+/** 마름모를 놓을 자리. 선 길이를 4등분한 안쪽 세 지점. */
+const DIAMOND_STOPS = [0.25, 0.5, 0.75];
+
+/** ▼를 놓을 자리. 마름모 세 곳(0.25/0.5/0.75) 사이의 빈 구간이라 뭉치지 않는다. */
+const ARROW_STOP = 0.625;
+
+/** 칸 번호 두 글자가 차지하는 폭 어림값 (mm). 선 왼쪽에 놓을 때 물려 주는 몫이다. */
+const JOIN_LABEL_WIDTH_MM = 9;
+
 /**
- * 이어 붙일 때 잘라낼 자리 (페이지 프레임 좌표, mm).
+ * 이어 붙일 자리 (페이지 프레임 좌표, mm).
  *
- * 이웃 페이지끼리는 PAGE_OVERLAP_MM만큼 겹쳐 있다. 장마다 왼쪽과 위쪽
- * 겹침만 잘라내면 나머지 변은 손대지 않고도 딱 맞물린다. 예를 들어 A4
- * 3열에서 A1은 도안 0~194를, A2는 184~378을 담는데, A2의 왼쪽 10mm를
- * 잘라내면 194~378이 되어 A1의 끝과 정확히 만난다. 그래서 오른쪽·아래에는
- * 선을 긋지 않는다 — 자를 일이 없다.
+ * 이웃 페이지끼리는 PAGE_OVERLAP_MM만큼 겹쳐 있다. 그 겹침 구간의
+ * 한가운데를 기준선으로 삼는다. 왼쪽·위쪽은 거기서 잘라내고, 오른쪽·아래는
+ * 이웃의 자른 변이 와서 앉을 자리를 알려 준다.
+ *
+ * 한가운데를 쓰는 이유가 있다. 겹침의 경계에서 자르면 두 장이 선 하나만
+ * 공유해 맞춤 표시를 양쪽에 남길 자리가 없다. 한가운데에서 자르면 겹침의
+ * 절반이 두 장에 모두 남아, 같은 도안 좌표에 찍은 마름모가 포갤 때 겹친다.
+ * A4 3열이면 A1은 도안 0~194를, A2는 189~378을 담아 189~194가 겹친다.
+ *
+ * 마름모를 선 위에 얹되 용지 가장자리에서는 떨어뜨린다. 여백 8mm는 프린터
+ * 비인쇄 영역 몫이라 거기까지 뻗으면 잘려 나갈 수 있다.
  */
 export function joinMarksFor(pagination: Pagination, page: Page): JoinMark[] {
   const labelAt = (row: number, col: number) =>
     pagination.pages.find((p) => p.row === row && p.col === col)?.gridLabel;
 
+  const halfMm = PAGE_OVERLAP_MM / 2;
+  const leftMm = PAGE_MARGIN_MM;
+  const topMm = PAGE_MARGIN_MM;
+  const rightMm = pagination.pageWidthMm - PAGE_MARGIN_MM;
+  const bottomMm = pagination.pageHeightMm - PAGE_MARGIN_MM;
+
+  const vertical = (xMm: number, edge: JoinEdge, neighborLabel: string): JoinMark => ({
+    edge,
+    x1Mm: xMm,
+    y1Mm: topMm,
+    x2Mm: xMm,
+    y2Mm: bottomMm,
+    isCut: edge === 'left',
+    diamonds: DIAMOND_STOPS.map((t) => ({ xMm, yMm: topMm + (bottomMm - topMm) * t })),
+    arrowXMm: xMm,
+    arrowYMm: topMm + (bottomMm - topMm) * ARROW_STOP,
+    neighborLabel,
+    // 라벨은 남기는 쪽에 둔다. 자르는 왼쪽 선은 오른쪽이, 오른쪽 선은 왼쪽이 남는다.
+    // 글자가 왼쪽 기준으로 그려지므로 왼쪽에 놓을 때는 글자 폭만큼 더 물린다.
+    labelXMm: edge === 'left' ? xMm + JOIN_DIAMOND_MM + 1 : xMm - JOIN_DIAMOND_MM - JOIN_LABEL_WIDTH_MM,
+    labelYMm: topMm + (bottomMm - topMm) * 0.25 - JOIN_DIAMOND_MM - 2,
+  });
+
+  const horizontal = (yMm: number, edge: JoinEdge, neighborLabel: string): JoinMark => ({
+    edge,
+    x1Mm: leftMm,
+    y1Mm: yMm,
+    x2Mm: rightMm,
+    y2Mm: yMm,
+    isCut: edge === 'top',
+    diamonds: DIAMOND_STOPS.map((t) => ({ xMm: leftMm + (rightMm - leftMm) * t, yMm })),
+    arrowXMm: leftMm + (rightMm - leftMm) * ARROW_STOP,
+    arrowYMm: yMm,
+    neighborLabel,
+    labelXMm: leftMm + (rightMm - leftMm) * 0.25 + JOIN_DIAMOND_MM + 1,
+    // 자르는 위쪽 선은 아래가, 아래쪽 선은 위가 남는다.
+    labelYMm: edge === 'top' ? yMm + JOIN_DIAMOND_MM + 4 : yMm - JOIN_DIAMOND_MM - 2,
+  });
+
   const marks: JoinMark[] = [];
+  const left = labelAt(page.row, page.col - 1);
+  const right = labelAt(page.row, page.col + 1);
+  const above = labelAt(page.row - 1, page.col);
+  const below = labelAt(page.row + 1, page.col);
 
-  if (page.col > 0) {
-    const neighborLabel = labelAt(page.row, page.col - 1);
-    if (neighborLabel !== undefined) {
-      const xMm = PAGE_MARGIN_MM + PAGE_OVERLAP_MM;
-      marks.push({
-        edge: 'left',
-        x1Mm: xMm,
-        y1Mm: PAGE_MARGIN_MM,
-        x2Mm: xMm,
-        y2Mm: pagination.pageHeightMm - PAGE_MARGIN_MM,
-        neighborLabel,
-        labelXMm: xMm + 2,
-        labelYMm: pagination.pageHeightMm / 2 - JOIN_ARM_MM - 2,
-      });
-    }
-  }
-
-  if (page.row > 0) {
-    const neighborLabel = labelAt(page.row - 1, page.col);
-    if (neighborLabel !== undefined) {
-      const yMm = PAGE_MARGIN_MM + PAGE_OVERLAP_MM;
-      marks.push({
-        edge: 'top',
-        x1Mm: PAGE_MARGIN_MM,
-        y1Mm: yMm,
-        x2Mm: pagination.pageWidthMm - PAGE_MARGIN_MM,
-        y2Mm: yMm,
-        neighborLabel,
-        labelXMm: pagination.pageWidthMm / 2 + JOIN_ARM_MM + 2,
-        labelYMm: yMm + 5,
-      });
-    }
-  }
+  if (left !== undefined) marks.push(vertical(leftMm + halfMm, 'left', left));
+  if (right !== undefined) marks.push(vertical(rightMm - halfMm, 'right', right));
+  if (above !== undefined) marks.push(horizontal(topMm + halfMm, 'top', above));
+  if (below !== undefined) marks.push(horizontal(bottomMm - halfMm, 'bottom', below));
 
   return marks;
 }
@@ -126,12 +170,13 @@ export function joinMarksFor(pagination: Pagination, page: Page): JoinMark[] {
  * 칸 번호를 찍을 자리 (페이지 프레임 좌표, mm).
  *
  * 잘라내는 쪽에 두면 이어 붙이는 순간 번호가 사라진다. 자르는 선이 있는
- * 방향으로 겹침 폭만큼 들여 놓는다. 자를 데가 없는 첫 칸은 그대로 둔다.
+ * 방향으로 겹침의 절반만큼 들여 놓는다. 자를 데가 없는 첫 칸은 그대로 둔다.
  */
 export function gridLabelPointMm(pagination: Pagination, page: Page): { xMm: number; yMm: number } {
-  const marks = joinMarksFor(pagination, page);
-  const trimLeftMm = marks.some((m) => m.edge === 'left') ? PAGE_OVERLAP_MM : 0;
-  const trimTopMm = marks.some((m) => m.edge === 'top') ? PAGE_OVERLAP_MM : 0;
+  const cuts = joinMarksFor(pagination, page).filter((m) => m.isCut);
+  const halfMm = PAGE_OVERLAP_MM / 2;
+  const trimLeftMm = cuts.some((m) => m.edge === 'left') ? halfMm : 0;
+  const trimTopMm = cuts.some((m) => m.edge === 'top') ? halfMm : 0;
   return {
     xMm: PAGE_MARGIN_MM + trimLeftMm + 2,
     yMm: PAGE_MARGIN_MM + trimTopMm + 6,
@@ -143,6 +188,10 @@ const FOLD_COLOR = rgb(0.55, 0.55, 0.55);
 const MARK_COLOR = rgb(0.2, 0.2, 0.2);
 const SEAM_COLOR = rgb(0.3, 0.3, 0.3);
 const SCALE_COLOR = rgb(0.85, 0.1, 0.1);
+/** 맞춤 마름모. 도안 선과 섞이지 않도록 빨강을 쓴다. */
+const JOIN_DIAMOND_COLOR = rgb(0.85, 0.1, 0.1);
+/** 골선. 재단선으로 오인하면 안 되는 선이라 빨강으로 굵게 긋는다. */
+const FOLD_EDGE_COLOR = rgb(0.7, 0.1, 0.1);
 
 interface PageContext {
   readonly pdfPage: PDFPage;
@@ -208,6 +257,71 @@ function drawFoldLine(ctx: PageContext, line: Line) {
   });
 }
 
+/**
+ * 골선 기호와 글자를 놓을 자리 (도안 좌표 x, mm). 골선이 없으면 undefined.
+ *
+ * 전개도 한가운데 한 번만 찍으면 그 자리를 담은 장에만 설명이 실린다. 나머지
+ * 장에는 빨간 선만 남아 무슨 선인지 알 수 없다. 그래서 장마다, 그 장에 실제로
+ * 보이는 구간의 한가운데에 하나씩 찍는다.
+ */
+export function foldEdgeLabelXMm(
+  pagination: Pagination,
+  page: Page,
+  layout: Layout,
+): number | undefined {
+  if (layout.foldEdgeYMm === undefined) return undefined;
+  const fromMm = Math.max(0, page.originXMm);
+  const toMm = Math.min(layout.totalWidthMm, page.originXMm + pagination.contentWidthMm);
+  if (toMm <= fromMm) return undefined;
+  return (fromMm + toMm) / 2;
+}
+
+/**
+ * 골선. 절반만 남긴 전개도의 아래 변이다. 자르는 선이 아니라 원단 접은
+ * 자리에 얹는 선이라, 재단선보다 굵고 빨갛게 긋고 글자로 짚어 준다.
+ * 접는 자리를 잘라 버리면 도안이 반쪽이 되므로 헷갈릴 여지를 남기지 않는다.
+ *
+ * 반원 두 개를 덧그려 재봉 도안에서 쓰는 골선 기호를 흉내 낸다.
+ */
+function drawFoldEdge(ctx: PageContext, layout: Layout, font: PDFFont) {
+  const yMm = layout.foldEdgeYMm;
+  if (yMm === undefined) return;
+
+  const { pagination, page } = ctx;
+  ctx.pdfPage.drawLine({
+    start: toPagePoint(pagination, page, 0, yMm),
+    end: toPagePoint(pagination, page, layout.totalWidthMm, yMm),
+    thickness: 1.6,
+    color: FOLD_EDGE_COLOR,
+  });
+
+  const centerXMm = foldEdgeLabelXMm(pagination, page, layout);
+  if (centerXMm === undefined) return;
+
+  for (const radiusMm of [4, 6]) {
+    const steps = 24;
+    for (let i = 0; i < steps; i++) {
+      const a = Math.PI + (Math.PI * i) / steps;
+      const b = Math.PI + (Math.PI * (i + 1)) / steps;
+      ctx.pdfPage.drawLine({
+        start: toPagePoint(pagination, page, centerXMm + radiusMm * Math.cos(a), yMm + radiusMm * Math.sin(a)),
+        end: toPagePoint(pagination, page, centerXMm + radiusMm * Math.cos(b), yMm + radiusMm * Math.sin(b)),
+        thickness: 0.8,
+        color: FOLD_EDGE_COLOR,
+      });
+    }
+  }
+
+  const label = toPagePoint(pagination, page, centerXMm + 9, yMm - 2);
+  ctx.pdfPage.drawText(FOLD_EDGE_LABEL, {
+    x: label.x,
+    y: label.y,
+    size: 10,
+    font,
+    color: FOLD_EDGE_COLOR,
+  });
+}
+
 function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
   const { pagination, page } = ctx;
   const armPt = 4 * MM_TO_PT;
@@ -269,24 +383,44 @@ function drawJoinMarks(ctx: PageContext, font: PDFFont) {
       dashArray: [6, 3],
     });
 
-    // ▼의 꼭짓점은 잘라 버리는 쪽에 둔다. 가장자리 바깥을 가리키는 셈이다.
-    const midXMm = (mark.x1Mm + mark.x2Mm) / 2;
-    const midYMm = (mark.y1Mm + mark.y2Mm) / 2;
-    const isLeft = mark.edge === 'left';
-    const apex = isLeft
-      ? { xMm: mark.x1Mm - armMm, yMm: midYMm }
-      : { xMm: midXMm, yMm: mark.y1Mm - armMm };
-    const wings = isLeft
-      ? [{ xMm: mark.x1Mm, yMm: midYMm - armMm }, { xMm: mark.x1Mm, yMm: midYMm + armMm }]
-      : [{ xMm: midXMm - armMm, yMm: mark.y1Mm }, { xMm: midXMm + armMm, yMm: mark.y1Mm }];
+    // 맞춤 마름모. 마주 보는 장의 같은 자리에도 찍히므로 포개면 겹친다.
+    for (const d of mark.diamonds) {
+      const corners = [
+        { xMm: d.xMm, yMm: d.yMm - JOIN_DIAMOND_MM },
+        { xMm: d.xMm + JOIN_DIAMOND_MM, yMm: d.yMm },
+        { xMm: d.xMm, yMm: d.yMm + JOIN_DIAMOND_MM },
+        { xMm: d.xMm - JOIN_DIAMOND_MM, yMm: d.yMm },
+      ];
+      for (let i = 0; i < corners.length; i++) {
+        const a = corners[i]!;
+        const b = corners[(i + 1) % corners.length]!;
+        ctx.pdfPage.drawLine({
+          start: toFramePoint(pagination, a.xMm, a.yMm),
+          end: toFramePoint(pagination, b.xMm, b.yMm),
+          thickness: 0.6,
+          color: JOIN_DIAMOND_COLOR,
+        });
+      }
+    }
 
-    for (const wing of wings) {
-      ctx.pdfPage.drawLine({
-        start: toFramePoint(pagination, apex.xMm, apex.yMm),
-        end: toFramePoint(pagination, wing.xMm, wing.yMm),
-        thickness: 0.5,
-        color: MARK_COLOR,
-      });
+    // ▼는 실제로 잘라내는 선에만. 꼭짓점이 버리는 쪽을 가리킨다.
+    if (mark.isCut) {
+      const isLeft = mark.edge === 'left';
+      const apex = isLeft
+        ? { xMm: mark.arrowXMm - armMm, yMm: mark.arrowYMm }
+        : { xMm: mark.arrowXMm, yMm: mark.arrowYMm - armMm };
+      const wings = isLeft
+        ? [{ xMm: mark.arrowXMm, yMm: mark.arrowYMm - armMm }, { xMm: mark.arrowXMm, yMm: mark.arrowYMm + armMm }]
+        : [{ xMm: mark.arrowXMm - armMm, yMm: mark.arrowYMm }, { xMm: mark.arrowXMm + armMm, yMm: mark.arrowYMm }];
+
+      for (const wing of wings) {
+        ctx.pdfPage.drawLine({
+          start: toFramePoint(pagination, apex.xMm, apex.yMm),
+          end: toFramePoint(pagination, wing.xMm, wing.yMm),
+          thickness: 0.5,
+          color: MARK_COLOR,
+        });
+      }
     }
 
     const labelPoint = toFramePoint(pagination, mark.labelXMm, mark.labelYMm);
@@ -383,6 +517,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     // 그리면 시접만큼 밀린 자리에 선이 생긴다.
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);
 
+    drawFoldEdge(ctx, layout, font);
     drawAlignmentMarks(ctx, font);
     drawJoinMarks(ctx, font);
     drawPatternNote(ctx, boldFont);
