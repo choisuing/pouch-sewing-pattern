@@ -34,7 +34,7 @@ WEIGHTS = {"KOREAN_FONT_BASE64": 400, "KOREAN_BOLD_FONT_BASE64": 700}
 # PDF에 등장하는 글자. src/core/pdf.ts의 KOREAN_FONT_CHARS와 같아야 한다.
 # 칸 번호가 행마다 A, B, C... 로 올라가므로 알파벳 전체를 담는다.
 CHARS = {
-    "KOREAN_FONT_BASE64": " !0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm골선세요인하확",
+    "KOREAN_FONT_BASE64": " !*0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm각골사선세요우인지치퍼파하확",
     # 굵은 글씨는 도안 하단 한 줄에만 쓴다.
     "KOREAN_BOLD_FONT_BASE64": " '!로사세실요이제주즈출력해",
 }

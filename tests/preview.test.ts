@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold } from '../src/core/layout';
+import { patternTitle } from '../src/core/dimensions';
 import { paginate } from '../src/core/tiling';
 import { renderPreviewSvg, escapeXml, describePagination } from '../src/ui/preview';
 
@@ -227,3 +228,33 @@ describe('renderPreviewSvg — 골선', () => {
   });
 });
 
+describe('renderPreviewSvg — 중앙선과 패턴명', () => {
+  const line = (s: string) => s.match(/class="center-line"[^>]*x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/);
+
+  it('세로 중앙선이 폭의 한가운데를 관통한다', () => {
+    const m = line(svg)!;
+    const [x1, y1, x2, y2] = m.slice(1).map(Number);
+    expect(x1).toBeCloseTo(layout.totalWidthMm / 2, 1);
+    expect(x2).toBeCloseTo(x1!, 6);
+    expect(y1).toBeCloseTo(0, 6);
+    expect(y2).toBeCloseTo(layout.totalHeightMm, 1);
+  });
+
+  it('중앙선은 일점쇄선이라 다른 선과 갈린다', () => {
+    const dash = svg.match(/class="center-line"[^>]*stroke-dasharray="([^"]*)"/)![1]!;
+    expect(dash.trim().split(/\s+/).length).toBe(4);
+  });
+
+  it('패턴명과 치수를 앞판 안에 찍는다', () => {
+    expect(svg).toContain(patternTitle(layout.dimensions));
+  });
+
+  it('패턴명이 앞판 라벨과 겹치지 않는다', () => {
+    const titleY = Number(svg.match(/class="pattern-title"[^>]*y="([\d.-]+)"/)![1]);
+    const front = layout.bands.find((b) => b.id === 'front')!;
+    const bandY = front.yMm + front.heightMm / 2;
+    expect(Math.abs(titleY - bandY)).toBeGreaterThan(1);
+    expect(titleY).toBeGreaterThan(front.yMm);
+    expect(titleY).toBeLessThan(front.yMm + front.heightMm);
+  });
+});

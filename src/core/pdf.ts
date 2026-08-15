@@ -6,7 +6,8 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
 import { SEAM_MM } from './constants';
-import type { Layout, Line, Point } from './layout';
+import { centerXMm, patternTitlePointMm, type Layout, type Line, type Point } from './layout';
+import { patternTitle } from './dimensions';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
 export const MM_TO_PT = 72 / 25.4;
@@ -16,7 +17,7 @@ export const MM_TO_PT = 72 / 25.4;
  * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
  */
 export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
-  " !0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm골선세요인하확",
+  " !*0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm각골사선세요우인지치퍼파하확",
 );
 
 /** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
@@ -192,6 +193,8 @@ const SCALE_COLOR = rgb(0.85, 0.1, 0.1);
 const JOIN_DIAMOND_COLOR = rgb(0.85, 0.1, 0.1);
 /** 골선. 재단선으로 오인하면 안 되는 선이라 빨강으로 굵게 긋는다. */
 const FOLD_EDGE_COLOR = rgb(0.7, 0.1, 0.1);
+/** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
+const CENTER_COLOR = rgb(0.5, 0.48, 0.44);
 
 interface PageContext {
   readonly pdfPage: PDFPage;
@@ -319,6 +322,43 @@ function drawFoldEdge(ctx: PageContext, layout: Layout, font: PDFFont) {
     size: 10,
     font,
     color: FOLD_EDGE_COLOR,
+  });
+}
+
+/**
+ * 세로 중앙선과 도안 이름.
+ *
+ * 중앙선은 앞판·바닥의 가로 한가운데다. 원단에 올릴 때 기준이 된다. 선 종류가
+ * 이미 여럿이라 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. 모양만으로 갈리므로
+ * 색은 눈에 띄지 않는 회색이면 된다.
+ *
+ * 이름은 앞판 한가운데에 한 번만 찍는다. 전개도에서 가장 넓게 비어 있고,
+ * 골선으로 절반만 남겨도 살아 있는 자리다.
+ */
+function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
+  const { pagination, page } = ctx;
+  const xMm = centerXMm(layout);
+
+  ctx.pdfPage.drawLine({
+    start: toPagePoint(pagination, page, xMm, 0),
+    end: toPagePoint(pagination, page, xMm, layout.totalHeightMm),
+    thickness: 0.4,
+    color: CENTER_COLOR,
+    dashArray: [8, 3, 1.5, 3],
+  });
+
+  const point = patternTitlePointMm(layout);
+  if (point === undefined) return;
+
+  const text = patternTitle(layout.dimensions);
+  const size = 11;
+  const anchor = toPagePoint(pagination, page, point.xMm, point.yMm);
+  ctx.pdfPage.drawText(text, {
+    x: anchor.x - font.widthOfTextAtSize(text, size) / 2,
+    y: anchor.y,
+    size,
+    font,
+    color: MARK_COLOR,
   });
 }
 
@@ -517,6 +557,7 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     // 그리면 시접만큼 밀린 자리에 선이 생긴다.
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);
 
+    drawCenterAndTitle(ctx, layout, font);
     drawFoldEdge(ctx, layout, font);
     drawAlignmentMarks(ctx, font);
     drawJoinMarks(ctx, font);

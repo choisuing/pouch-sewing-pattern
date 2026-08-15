@@ -277,3 +277,17 @@ export function halveOnFold(layout: Layout): Layout {
   };
 }
 
+/** 세로 중앙선 자리 (mm). 앞판·바닥의 가로 한가운데라 원단에 올릴 때 기준이 된다. */
+export function centerXMm(layout: Layout): number {
+  return layout.totalWidthMm / 2;
+}
+
+/**
+ * 도안 이름을 찍을 자리 (mm). 앞판 한가운데다.
+ * 앞판은 전개도에서 가장 넓게 비어 있고, 골선으로 절반만 남겨도 살아 있다.
+ */
+export function patternTitlePointMm(layout: Layout): { xMm: number; yMm: number } | undefined {
+  const front = layout.bands.find((band) => band.id === 'front');
+  if (front === undefined) return undefined;
+  return { xMm: front.xMm + front.widthMm / 2, yMm: front.yMm + front.heightMm / 2 };
+}

@@ -1,5 +1,6 @@
-import type { Layout, Point } from '../core/layout';
+import { centerXMm, patternTitlePointMm, type Layout, type Point } from '../core/layout';
 import type { Pagination } from '../core/tiling';
+import { patternTitle } from '../core/dimensions';
 
 export function escapeXml(value: string): string {
   return value
@@ -23,6 +24,8 @@ const TILE_COLOR = '#2a7387';
 const SEAM_COLOR = '#94682f';
 /** 골선. 접는 자리라 재단선·완성선과 섞이면 안 된다. */
 const FOLD_EDGE_COLOR = '#b42318';
+/** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
+const CENTER_COLOR = '#8a8175';
 
 /*
  * 선 두께와 글자 크기는 도안 폭에 비례시킨다. mm 고정값으로 두면 작은 도안에서
@@ -123,6 +126,29 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
       ` stroke="${FOLD_EDGE_COLOR}" stroke-width="${round1(cutStroke * 1.2)}" />` + arcs;
   })();
 
+  /*
+   * 세로 중앙선. 앞판·바닥의 가로 한가운데라 원단에 올릴 때 기준이 된다.
+   * 선 종류가 이미 여럿이라 제도에서 중심선에 쓰는 일점쇄선으로 긋는다.
+   * 모양만으로 갈리므로 색은 눈에 띄지 않는 회색이면 된다.
+   */
+  const centerLine =
+    `<line class="center-line" x1="${round1(centerXMm(layout))}" y1="0"` +
+    ` x2="${round1(centerXMm(layout))}" y2="${round1(h)}"` +
+    ` stroke="${CENTER_COLOR}" stroke-width="${thinStroke}"` +
+    ` stroke-dasharray="${dash(0.026, 0.012)} ${dash(0.004, 0.012)}" />`;
+
+  /*
+   * 도안 이름과 치수. 앞판 한가운데가 가장 넓게 비어 있다.
+   * 미리보기에는 밴드 이름이 이미 그 자리에 있어 한 줄 아래로 내린다.
+   */
+  const titlePoint = patternTitlePointMm(layout);
+  const patternTitleText =
+    titlePoint === undefined
+      ? ''
+      : `<text class="pattern-title" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 1.6)}"` +
+        ` text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#666">` +
+        `${escapeXml(patternTitle(layout.dimensions))}</text>`;
+
   const labels = layout.bands
     .map(
       (band) =>
@@ -148,8 +174,10 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     // 먼저 그리면 가운데가 덮이고 밖으로 나온 끝부분만 남는다.
     tiles,
     tileLabels,
+    centerLine,
     foldEdge,
     labels,
+    patternTitleText,
     dims,
     `</g>`,
     `</svg>`,

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { inflateSync } from 'node:zlib';
 import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
-import { buildLayout, halveOnFold } from '../src/core/layout';
+import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
+import { patternTitle } from '../src/core/dimensions';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
 import {
   MM_TO_PT,
@@ -550,3 +551,27 @@ describe('foldEdgeLabelXMm — 골선 설명은 장마다 붙는다', () => {
   });
 });
 
+describe('buildPdf — 중앙선과 패턴명', () => {
+  it('패턴명에 쓰는 글자가 모두 서브셋 폰트 안에 있다', () => {
+    for (const dims of [
+      { widthMm: 160, heightMm: 80, depthMm: 40 },
+      { widthMm: 400, heightMm: 300, depthMm: 200 },
+      { widthMm: 100, heightMm: 50, depthMm: 40 },
+    ]) {
+      const missing = [...patternTitle(dims)].filter((ch) => !KOREAN_FONT_CHARS.has(ch));
+      expect(missing).toEqual([]);
+    }
+  });
+
+  it('중앙선과 패턴명이 실제로 그려진다', async () => {
+    const pagination = paginate(layout, 'a4');
+    const withMarks = await buildPdf(layout, pagination);
+    // 밴드를 비워 패턴명 자리를 없애면 그만큼 콘텐츠가 줄어든다.
+    const withoutTitle = await buildPdf({ ...layout, bands: [] }, pagination);
+    expect(withMarks.length).toBeGreaterThan(withoutTitle.length);
+  });
+
+  it('골선으로 절반만 남겨도 패턴명 자리가 있다', () => {
+    expect(patternTitlePointMm(halveOnFold(layout))).toBeDefined();
+  });
+});

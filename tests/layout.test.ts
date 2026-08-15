@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildLayout, halveOnFold } from '../src/core/layout';
+import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
+import { patternTitle } from '../src/core/dimensions';
 import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
@@ -439,3 +440,39 @@ describe('halveOnFold — 골선으로 절반만 남기기', () => {
   });
 });
 
+describe('패턴명과 중앙선', () => {
+  it('패턴명에 이름과 치수가 가로*높이*바닥폭 순으로 들어간다', () => {
+    expect(patternTitle({ widthMm: 160, heightMm: 80, depthMm: 40 }))
+      .toBe('사각사각 지퍼 파우치 160*80*40');
+  });
+
+  it('패턴명 자리가 앞판 한가운데다', () => {
+    const layout = buildLayout(travel);
+    const front = layout.bands.find((b) => b.id === 'front')!;
+    const point = patternTitlePointMm(layout)!;
+    expect(point.xMm).toBeCloseTo(front.xMm + front.widthMm / 2, 9);
+    expect(point.yMm).toBeCloseTo(front.yMm + front.heightMm / 2, 9);
+  });
+
+  it('골선으로 절반만 남겨도 앞판은 살아 있어 자리가 있다', () => {
+    const half = halveOnFold(buildLayout(travel));
+    const point = patternTitlePointMm(half);
+    expect(point).toBeDefined();
+    expect(point!.yMm).toBeLessThan(half.foldEdgeYMm!);
+  });
+
+  it('중앙선은 전개도 폭의 한가운데다', () => {
+    for (const dims of [travel, { widthMm: 150, depthMm: 50, heightMm: 90 }]) {
+      const layout = buildLayout(dims);
+      expect(centerXMm(layout)).toBeCloseTo(layout.totalWidthMm / 2, 9);
+    }
+  });
+
+  it('중앙선이 좌우 접힘선 사이에 놓인다', () => {
+    // 세로 접힘선은 x = S + H/2 와 폭 - S - H/2 자리다. 중앙선은 그 사이에 있어야 한다.
+    const layout = buildLayout(travel);
+    const xs = [...new Set(layout.foldLinesMm.filter((f) => f.x1Mm === f.x2Mm).map((f) => f.x1Mm))];
+    expect(centerXMm(layout)).toBeGreaterThan(Math.min(...xs));
+    expect(centerXMm(layout)).toBeLessThan(Math.max(...xs));
+  });
+});

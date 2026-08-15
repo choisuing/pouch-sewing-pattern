@@ -47,3 +47,15 @@ export function validateDimensions(input: Record<DimensionField, unknown>): Vali
     value: { widthMm: values.widthMm, depthMm: values.depthMm, heightMm: values.heightMm },
   };
 }
+
+/** 도안에 찍는 이름. 화면 제목과 같은 말을 쓴다. */
+export const PATTERN_NAME = '사각사각 지퍼 파우치';
+
+/**
+ * 도안에 찍을 한 줄. 이름과 치수를 붙인다.
+ * 치수 순서는 화면·라벨과 같은 가로*높이*바닥폭이다.
+ */
+export function patternTitle(dimensions: Dimensions): string {
+  const { widthMm: W, heightMm: H, depthMm: D } = dimensions;
+  return `${PATTERN_NAME} ${W}*${H}*${D}`;
+}
