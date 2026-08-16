@@ -2,7 +2,7 @@
 // Copyright (C) 2026 choisuing
 
 import { PRESETS, type Preset } from './core/constants';
-import { validateDimensions } from './core/dimensions';
+import { patternFileName, validateDimensions } from './core/dimensions';
 import { buildLayout, halveOnFold } from './core/layout';
 import { paginate, type PaperSize } from './core/tiling';
 import {
@@ -98,9 +98,8 @@ async function download(): Promise<void> {
     const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const { widthMm: W, depthMm: D, heightMm: H } = result.value;
     link.href = url;
-    link.download = `box-pouch-${W}x${D}x${H}-${paper}${foldHalf ? '-half' : ''}.pdf`;
+    link.download = patternFileName(result.value, paper, foldHalf);
     link.click();
     URL.revokeObjectURL(url);
   } catch (error) {

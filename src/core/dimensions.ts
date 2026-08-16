@@ -62,3 +62,19 @@ export function patternTitle(dimensions: Dimensions): string {
   const { widthMm: W, heightMm: H, depthMm: D } = dimensions;
   return `${PATTERN_NAME} ${W}*${H}*${D}`;
 }
+
+/**
+ * 내려받는 PDF의 파일 이름.
+ *
+ * 치수 순서는 patternTitle과 같은 가로x높이x바닥폭이다. 파일을 여러 개
+ * 받아 두었을 때 이름과 도안 속 글자가 다른 순서면 어느 쪽이 맞는지
+ * 알 수 없다.
+ */
+export function patternFileName(
+  dimensions: Dimensions,
+  paper: string,
+  foldHalf: boolean,
+): string {
+  const { widthMm: W, heightMm: H, depthMm: D } = dimensions;
+  return `box-pouch-${W}x${H}x${D}-${paper}${foldHalf ? '-half' : ''}.pdf`;
+}

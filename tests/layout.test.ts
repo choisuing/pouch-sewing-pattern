@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
-import { patternTitle } from '../src/core/dimensions';
+import { patternTitle, patternFileName } from '../src/core/dimensions';
 import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
@@ -474,5 +474,36 @@ describe('패턴명과 중앙선', () => {
     const xs = [...new Set(layout.foldLinesMm.filter((f) => f.x1Mm === f.x2Mm).map((f) => f.x1Mm))];
     expect(centerXMm(layout)).toBeGreaterThan(Math.min(...xs));
     expect(centerXMm(layout)).toBeLessThan(Math.max(...xs));
+  });
+});
+
+describe('patternFileName — 내려받는 파일 이름', () => {
+  const dims: Dimensions = { widthMm: 160, heightMm: 80, depthMm: 40 };
+
+  it('치수를 가로x높이x바닥폭 순으로 적는다', () => {
+    // 화면·도안 이름과 같은 순서여야 한다. 파일을 여러 개 받아 두면
+    // 순서가 다른 쪽이 무엇인지 알 수 없다.
+    expect(patternFileName(dims, 'a4', false)).toBe('box-pouch-160x80x40-a4.pdf');
+  });
+
+  it('도안 이름과 치수 순서가 같다', () => {
+    for (const d of [dims, travel, { widthMm: 100, heightMm: 50, depthMm: 40 }]) {
+      const fromTitle = patternTitle(d).split(' ').pop()!.replace(/\*/g, 'x');
+      expect(patternFileName(d, 'a4', false)).toContain(fromTitle);
+    }
+  });
+
+  it('용지를 붙인다', () => {
+    expect(patternFileName(dims, 'a3', false)).toContain('-a3');
+  });
+
+  it('골선으로 뽑으면 half를 붙인다', () => {
+    expect(patternFileName(dims, 'a4', true)).toBe('box-pouch-160x80x40-a4-half.pdf');
+  });
+
+  it('파일 이름에 쓸 수 없는 글자가 없다', () => {
+    for (const half of [true, false]) {
+      expect(patternFileName(dims, 'a4', half)).toMatch(/^[a-z0-9x.-]+$/);
+    }
   });
 });
