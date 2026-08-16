@@ -29,7 +29,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # vite 8은 ^20.19 || >=22.12, vitest 4는 ^20 || ^22 || >=24를 요구한다.
+          # 로컬 개발 환경과 맞춰 24로 고정한다.
+          node-version: 24
           cache: npm
 
       - run: npm ci
