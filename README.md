@@ -4,6 +4,36 @@
 
 **바로 쓰기 → https://choisuing.github.io/pouch-sewing-pattern/**
 
+![화면](docs/img/screenshot.jpg)
+
+설치할 것도, 가입할 것도 없다. 브라우저에서 치수를 넣고 PDF를 받아 100%로 인쇄하면 그대로 재단하면 된다. 시접 10mm가 이미 포함되어 있다.
+
+<details>
+<summary><b>In English</b></summary>
+
+## Box Pouch Sewing Pattern Generator
+
+A static web tool that turns finished dimensions into a print-ready, true-to-scale PDF sewing pattern for a boxy zipper pouch.
+
+**Try it → https://choisuing.github.io/pouch-sewing-pattern/**
+
+Enter width, height and depth in millimetres. The tool drafts the flat pattern, adds a 10&nbsp;mm seam allowance, tiles it across A4 or A3 sheets and hands you a PDF to print at 100&nbsp;% scale.
+
+**What it does for you**
+
+- **True scale, verified.** A red 3&nbsp;cm square is printed on the first sheet. Measure it with a ruler; if it is 3&nbsp;cm, every other measurement is right.
+- **Multi-sheet assembly.** Neighbouring sheets overlap by 10&nbsp;mm. Cut along the dashed line on the left and top edges, then slide each sheet until the red diamonds line up and tape.
+- **Half-size printing.** The pattern is symmetric about the middle of the base, so you can print only the top half and place the marked fold edge on folded fabric. Roughly halves the number of sheets.
+- **Line legend on every sheet.** Cut line, stitch line, fold line, centre line, fold edge and assembly marks each get their own colour *and* dash pattern, so they never get confused in print.
+
+**Runs entirely in your browser.** No account, no upload, no server. Your measurements never leave the page. Fonts and icons are bundled, so nothing is fetched from a third party.
+
+Interface is Korean only for now. The generated pattern is mostly lines and numbers, so it is usable without reading Korean — the labels mean 지퍼단 *zipper band*, 앞판 *front*, 바닥 *base*, 뒤판 *back*, 골선 *place on fold*.
+
+Code is MIT licensed. **Patterns you generate are yours** — there are no restrictions on the output.
+
+</details>
+
 ## 쓰는 법
 
 ```bash
