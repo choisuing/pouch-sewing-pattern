@@ -113,13 +113,13 @@ export function buildLayout(dimensions: Dimensions): Layout {
     y += spec.heightMm;
   }
 
-  const left = sideInsetMm;
-  const right = totalWidthMm - sideInsetMm;
-  const topBandBottom = topBandHeightMm;
-  const frontBottom = topBandBottom + panelHeightMm;
-  const bottomBandBottom = frontBottom + bottomBandHeightMm;
-  const backBottom = bottomBandBottom + panelHeightMm;
-  const total = y;
+  const leftMm = sideInsetMm;
+  const rightMm = totalWidthMm - sideInsetMm;
+  const topBandBottomMm = topBandHeightMm;
+  const frontBottomMm = topBandBottomMm + panelHeightMm;
+  const bottomBandBottomMm = frontBottomMm + bottomBandHeightMm;
+  const backBottomMm = bottomBandBottomMm + panelHeightMm;
+  const totalMm = y;
 
   // 좌상단에서 시계 방향으로 한 바퀴.
   // 오른쪽 변을 내려가며 앞판 홈 → 뒤판 홈, 왼쪽 변을 올라오며 뒤판 홈 → 앞판 홈.
@@ -127,27 +127,27 @@ export function buildLayout(dimensions: Dimensions): Layout {
     { xMm: 0, yMm: 0 },
     { xMm: totalWidthMm, yMm: 0 },
     // 오른쪽 — 앞판 홈
-    { xMm: totalWidthMm, yMm: topBandBottom },
-    { xMm: right, yMm: topBandBottom },
-    { xMm: right, yMm: frontBottom },
-    { xMm: totalWidthMm, yMm: frontBottom },
+    { xMm: totalWidthMm, yMm: topBandBottomMm },
+    { xMm: rightMm, yMm: topBandBottomMm },
+    { xMm: rightMm, yMm: frontBottomMm },
+    { xMm: totalWidthMm, yMm: frontBottomMm },
     // 오른쪽 — 뒤판 홈
-    { xMm: totalWidthMm, yMm: bottomBandBottom },
-    { xMm: right, yMm: bottomBandBottom },
-    { xMm: right, yMm: backBottom },
-    { xMm: totalWidthMm, yMm: backBottom },
-    { xMm: totalWidthMm, yMm: total },
-    { xMm: 0, yMm: total },
+    { xMm: totalWidthMm, yMm: bottomBandBottomMm },
+    { xMm: rightMm, yMm: bottomBandBottomMm },
+    { xMm: rightMm, yMm: backBottomMm },
+    { xMm: totalWidthMm, yMm: backBottomMm },
+    { xMm: totalWidthMm, yMm: totalMm },
+    { xMm: 0, yMm: totalMm },
     // 왼쪽 — 뒤판 홈
-    { xMm: 0, yMm: backBottom },
-    { xMm: left, yMm: backBottom },
-    { xMm: left, yMm: bottomBandBottom },
-    { xMm: 0, yMm: bottomBandBottom },
+    { xMm: 0, yMm: backBottomMm },
+    { xMm: leftMm, yMm: backBottomMm },
+    { xMm: leftMm, yMm: bottomBandBottomMm },
+    { xMm: 0, yMm: bottomBandBottomMm },
     // 왼쪽 — 앞판 홈
-    { xMm: 0, yMm: frontBottom },
-    { xMm: left, yMm: frontBottom },
-    { xMm: left, yMm: topBandBottom },
-    { xMm: 0, yMm: topBandBottom },
+    { xMm: 0, yMm: frontBottomMm },
+    { xMm: leftMm, yMm: frontBottomMm },
+    { xMm: leftMm, yMm: topBandBottomMm },
+    { xMm: 0, yMm: topBandBottomMm },
   ];
 
   /*

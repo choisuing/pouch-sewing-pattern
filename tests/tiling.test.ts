@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout } from '../src/core/layout';
-import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, PAPER_MM, paginate } from '../src/core/tiling';
+import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, PAPER_MM, countTiles, paginate } from '../src/core/tiling';
 import type { Dimensions } from '../src/core/dimensions';
 
 const travel: Dimensions = { widthMm: 270, depthMm: 100, heightMm: 140 };
@@ -74,5 +74,34 @@ describe('paginate', () => {
     expect(p.pages).toHaveLength(1);
     expect(p.rows).toBe(1);
     expect(p.cols).toBe(1);
+  });
+});
+
+describe('countTiles — 장수 계산', () => {
+  it('한 장에 다 들어가면 한 장이다', () => {
+    expect(countTiles(100, 194)).toBe(1);
+    expect(countTiles(194, 194)).toBe(1);
+  });
+
+  it('넘치면 겹침을 뺀 만큼씩 늘어난다', () => {
+    // 한 장이 새로 담는 몫은 194 - 10 = 184다.
+    expect(countTiles(195, 194)).toBe(2);
+    expect(countTiles(378, 194)).toBe(2);
+    expect(countTiles(379, 194)).toBe(3);
+  });
+
+  it('용지가 겹침 폭보다 좁으면 계산을 거부한다', () => {
+    // 이 경우 한 장을 더해도 담는 양이 늘지 않아 영원히 끝나지 않는다.
+    // 지금 상수 조합으로는 닿지 않지만, 여백이나 겹침을 손볼 때를 막는 방벽이다.
+    expect(() => countTiles(500, PAGE_OVERLAP_MM)).toThrow('용지가 겹침 폭보다 작습니다.');
+    expect(() => countTiles(500, PAGE_OVERLAP_MM - 1)).toThrow();
+  });
+
+  it('실제 용지 조합은 모두 이 방벽에 걸리지 않는다', () => {
+    for (const spec of Object.values(PAPER_MM)) {
+      for (const side of [spec.widthMm, spec.heightMm]) {
+        expect(side - 2 * PAGE_MARGIN_MM).toBeGreaterThan(PAGE_OVERLAP_MM);
+      }
+    }
   });
 });

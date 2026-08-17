@@ -169,7 +169,6 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     // WebKit의 0폭 계산도 우연히 비켜 가 있었다. 폭을 직접 못 박아 우연에 기대지 않는다.
     ` style="overflow: visible; width: 100%; max-width: 100%; height: auto;" role="img"`,
     ` aria-label="${escapeXml(`가로 ${round1(w)}mm, 세로 ${round1(h)}mm 전개도 미리보기`)}">`,
-    `<g transform="translate(0,0)">`,
     `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="${cutStroke}" />`,
     seamBand,
     seamLine,
@@ -182,7 +181,6 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     labels,
     patternTitleText,
     dims,
-    `</g>`,
     `</svg>`,
   ].join('');
 }

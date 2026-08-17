@@ -21,6 +21,10 @@ export interface Page {
   readonly row: number;
   readonly col: number;
   readonly gridLabel: string;
+  /**
+   * 이 장의 인쇄 영역 좌상단이 전개도의 어느 좌표에 놓이는지 (mm).
+   * 도안 좌표 → 페이지 좌표 변환의 기준점이다 (pdf.ts의 toPagePoint).
+   */
   readonly originXMm: number;
   readonly originYMm: number;
 }
@@ -37,7 +41,11 @@ export interface Pagination {
   readonly pages: readonly Page[];
 }
 
-function countTiles(totalMm: number, contentMm: number): number {
+/**
+ * 전개도 한 변을 담는 데 필요한 장수.
+ * 이웃끼리 PAGE_OVERLAP_MM씩 겹치므로 한 장이 새로 담는 몫은 그만큼 줄어든다.
+ */
+export function countTiles(totalMm: number, contentMm: number): number {
   const step = contentMm - PAGE_OVERLAP_MM;
   if (step <= 0) throw new Error('용지가 겹침 폭보다 작습니다.');
   if (totalMm <= contentMm) return 1;

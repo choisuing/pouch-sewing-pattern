@@ -62,13 +62,18 @@ function refresh(): void {
 
   const full = buildLayout(result.value);
   const layout = foldHalf ? halveOnFold(full) : full;
-  const pagination = paginate(layout, paper);
+
+  // 용지별 장수를 둘 다 보여줘야 해서 어차피 A4·A3을 모두 계산한다.
+  // 고른 용지 것을 여기서 꺼내 쓰면 같은 계산을 한 번 덜 한다.
+  const byPaper = { a4: paginate(layout, 'a4'), a3: paginate(layout, 'a3') };
+  const pagination = byPaper[paper];
+
   previewEl.innerHTML = renderPreviewSvg(layout, pagination);
   summaryEl.textContent = describePagination(pagination);
   downloadBtn.disabled = false;
 
-  setPaperCount('a4', paginate(layout, 'a4').pages.length);
-  setPaperCount('a3', paginate(layout, 'a3').pages.length);
+  setPaperCount('a4', byPaper.a4.pages.length);
+  setPaperCount('a3', byPaper.a3.pages.length);
 }
 
 async function download(): Promise<void> {
@@ -101,7 +106,9 @@ async function download(): Promise<void> {
     link.href = url;
     link.download = patternFileName(result.value, paper, foldHalf);
     link.click();
-    URL.revokeObjectURL(url);
+    // click() 직후 바로 거두면 브라우저가 아직 읽는 중일 수 있다. Chrome은
+    // 견디지만 표준이 보장하는 동작은 아니다. 다음 차례로 미뤄 둔다.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (error) {
     showError([`PDF를 만들지 못했습니다: ${error instanceof Error ? error.message : String(error)}`]);
   } finally {

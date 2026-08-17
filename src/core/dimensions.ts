@@ -21,7 +21,9 @@ export type ValidationResult =
 
 export function validateDimensions(input: Record<DimensionField, unknown>): ValidationResult {
   const errors: FieldError[] = [];
-  const values = {} as Record<DimensionField, number>;
+  // 검사 전에는 아무 값도 없으므로 Partial로 시작한다. 빈 객체를 완성된
+  // Record인 척 단언하면 아래에서 값이 빠진 경우를 타입이 못 잡는다.
+  const values: Partial<Record<DimensionField, number>> = {};
 
   for (const field of DIMENSION_ORDER) {
     const raw = input[field];
@@ -45,10 +47,15 @@ export function validateDimensions(input: Record<DimensionField, unknown>): Vali
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return {
-    ok: true,
-    value: { widthMm: values.widthMm, depthMm: values.depthMm, heightMm: values.heightMm },
-  };
+
+  // 오류가 없으면 세 값이 모두 채워져 있다. 다만 타입만으로는 그걸 알 수
+  // 없으므로 단언 대신 실제로 확인한다. 필드가 늘었는데 검사 루프에서
+  // 빠지는 경우를 여기서 잡는다.
+  const { widthMm, depthMm, heightMm } = values;
+  if (widthMm === undefined || depthMm === undefined || heightMm === undefined) {
+    throw new Error('치수 검사를 통과했는데 값이 비어 있습니다.');
+  }
+  return { ok: true, value: { widthMm, depthMm, heightMm } };
 }
 
 /** 도안에 찍는 이름. 화면 제목과 같은 말을 쓴다. */
