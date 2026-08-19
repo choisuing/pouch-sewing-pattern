@@ -176,6 +176,8 @@ python3 scripts/build-korean-font.py
 
 `scripts/build-korean-font.py`의 `CHARS`와 `src/core/pdf.ts`의 `KOREAN_FONT_CHARS`를 함께 고친다. 빠뜨리면 `tests/pdf.test.ts`가 먼저 실패한다.
 
+**목록만 고치고 스크립트를 안 돌리면 조용히 빈칸으로 인쇄된다.** 그래서 테스트가 목록끼리 대조하는 데서 그치지 않고, base64를 풀어 **글꼴 바이너리에 그 글리프가 실제로 들어 있는지** 확인한다. 목록에 더하고 재생성을 잊은 경우와, 목록에서 빼고 재생성을 잊은 경우를 양쪽 다 잡는다.
+
 서브셋에서 GPOS/GSUB를 제거하는 이유가 있다. Noto Sans KR은 CJK 폰트라 전각 기준 위치 조정이 들어 있는데, 그대로 두면 fontkit이 이를 적용해 `3cm`이 `3 cm`처럼 벌어진다.
 
 ## 아이콘

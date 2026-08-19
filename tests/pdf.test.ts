@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { inflateSync } from 'node:zlib';
 import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { KOREAN_BOLD_FONT_BASE64 } from '../src/core/korean-font';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
 import { patternTitle } from '../src/core/dimensions';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
@@ -12,6 +14,7 @@ import {
   foldEdgeLabelXMm,
   buildPdf,
   KOREAN_BOLD_FONT_CHARS,
+  KOREAN_FONT_BASE64,
   KOREAN_FONT_CHARS,
   PATTERN_NOTE,
   patternNotePointMm,
@@ -596,5 +599,47 @@ describe('buildPdf — 시접 없이 뜬 도안', () => {
     const pagination = paginate(noSeam, 'a4');
     const doc = await PDFDocument.load(await buildPdf(noSeam, pagination));
     expect(doc.getPageCount()).toBe(pagination.pages.length);
+  });
+});
+
+describe('서브셋 폰트가 선언한 글자를 실제로 담고 있다', () => {
+  /*
+   * PDF 문구를 바꿀 때 할 일이 둘이다. KOREAN_FONT_CHARS에 글자를 더하고,
+   * scripts/build-korean-font.py를 다시 돌려야 한다. 앞의 것만 하고 뒤를
+   * 빠뜨려도 다른 테스트는 모두 통과한다 — 전부 그 목록만 보기 때문이다.
+   * 그러면 PDF에 그 글자가 빈칸으로 인쇄된다.
+   *
+   * 여기서는 목록이 아니라 글꼴 바이너리를 열어 대조한다. 폰트 재생성을
+   * 잊으면 이 테스트가 걸린다.
+   */
+  const glyphsOf = (base64: string): Set<number> => {
+    const font = fontkit.create(Buffer.from(base64, 'base64')) as { characterSet: number[] };
+    return new Set(font.characterSet);
+  };
+
+  it('본문용 폰트가 KOREAN_FONT_CHARS를 모두 담는다', () => {
+    const have = glyphsOf(KOREAN_FONT_BASE64);
+    const missing = [...KOREAN_FONT_CHARS].filter((ch) => !have.has(ch.codePointAt(0)!));
+    expect(missing).toEqual([]);
+  });
+
+  it('굵은 폰트가 KOREAN_BOLD_FONT_CHARS를 모두 담는다', () => {
+    const have = glyphsOf(KOREAN_BOLD_FONT_BASE64);
+    const missing = [...KOREAN_BOLD_FONT_CHARS].filter((ch) => !have.has(ch.codePointAt(0)!));
+    expect(missing).toEqual([]);
+  });
+
+  it('선언하지 않은 글자를 쓸데없이 담지 않는다', () => {
+    // 목록에서 글자를 빼고 폰트를 다시 만들지 않으면 여기서 걸린다.
+    // 서브셋이 필요 이상으로 커지는 것도 함께 막는다.
+    //
+    // U+FFFF는 뺀다. 서브셋 도구가 남기는 표식이지 글자가 아니다.
+    // 영구 미할당 비문자라 인쇄될 일이 없다. fontTools는 걸러내고
+    // fontkit은 그대로 보고해서 둘의 셈이 하나 어긋난다.
+    const NON_CHARACTER = 0xffff;
+    const have = glyphsOf(KOREAN_FONT_BASE64);
+    const declared = new Set([...KOREAN_FONT_CHARS].map((ch) => ch.codePointAt(0)!));
+    const extra = [...have].filter((cp) => cp !== NON_CHARACTER && !declared.has(cp));
+    expect(extra.map((cp) => String.fromCodePoint(cp))).toEqual([]);
   });
 });
