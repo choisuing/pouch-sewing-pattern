@@ -325,3 +325,49 @@ describe('legendItems — 범례는 실제로 그린 선만 알려준다', () =>
     }
   });
 });
+
+describe('범례 색이 도면에 실제로 쓰인 색이다', () => {
+  /*
+   * 예전에는 견본 색이 style.css에, 선 색이 preview.ts에 따로 있었다.
+   * 둘은 손으로 맞춰야 했고 주석으로만 묶여 있었다. 한쪽만 고치면 범례가
+   * 도면과 다른 색을 가리키는데 아무도 못 잡는다.
+   *
+   * 이제 legendItems가 색까지 내주고 화면은 그걸 그대로 쓴다. 여기서는
+   * 그 색이 정말 도면에 나타나는지 확인한다.
+   */
+  const cases = [
+    { name: '시접 있음', layout: buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }) },
+    { name: '시접 없음', layout: buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }, 0) },
+    { name: '골선', layout: halveOnFold(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 })) },
+  ];
+
+  it('모든 범례 줄이 색을 들고 있다', () => {
+    for (const { layout } of cases) {
+      for (const item of legendItems(layout)) {
+        expect(item.color).toMatch(/^#[0-9a-f]{6}$/i);
+      }
+    }
+  });
+
+  it('그 색이 실제로 그려진 SVG 안에 있다', () => {
+    for (const { name, layout } of cases) {
+      const drawn = renderPreviewSvg(layout, paginate(layout, 'a4'));
+      for (const item of legendItems(layout)) {
+        expect(drawn.toLowerCase(), `${name}: ${item.text}`).toContain(item.color.toLowerCase());
+      }
+    }
+  });
+
+  it('면이 있는 견본은 채움색도 들고 있다', () => {
+    const withSeam = legendItems(cases[0]!.layout);
+    const band = withSeam.find((i) => i.text.startsWith('시접'))!;
+    expect(band.fill).toMatch(/^#[0-9a-f]{6}$/i);
+    const drawn = renderPreviewSvg(cases[0]!.layout, paginate(cases[0]!.layout, 'a4'));
+    expect(drawn.toLowerCase()).toContain(band.fill!.toLowerCase());
+  });
+
+  it('선만 있는 견본은 채움색이 없다', () => {
+    const cut = legendItems(cases[0]!.layout).find((i) => i.text.startsWith('재단선'))!;
+    expect(cut.fill).toBeUndefined();
+  });
+});

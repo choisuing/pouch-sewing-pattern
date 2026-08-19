@@ -78,8 +78,15 @@ function refresh(): void {
   summaryEl.textContent = describePagination(pagination);
   downloadBtn.disabled = false;
 
+  // 견본 색은 CSS가 아니라 legendItems가 준다. 도면에 그린 색과 같은
+  // 출처라 범례가 딴 색을 가리킬 수 없다.
   legendEl.innerHTML = legendItems(layout)
-    .map((item) => `<li><span class="swatch ${item.swatch}"></span>${item.text}</li>`)
+    .map((item) => {
+      const style = item.fill === undefined
+        ? `border-top-color: ${item.color}`
+        : `border-color: ${item.color}; background: ${item.fill}`;
+      return `<li><span class="swatch ${item.swatch}" style="${style}"></span>${item.text}</li>`;
+    })
     .join('');
 
   setPaperCount('a4', byPaper.a4.pages.length);

@@ -29,6 +29,11 @@ const SEAM_COLOR = '#94682f';
 const FOLD_EDGE_COLOR = '#b42318';
 /** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
 const CENTER_COLOR = '#8a8175';
+/** 재단선. 도안에서 가장 굵고 진한 선이다. */
+const CUT_COLOR = '#222222';
+/** 도안 안쪽 채움과 시접 띠 채움. */
+const PATTERN_FILL = '#fffdf5';
+const SEAM_BAND_FILL = '#fce7f0';
 
 /*
  * 선 두께와 글자 크기는 도안 폭에 비례시킨다. mm 고정값으로 두면 작은 도안에서
@@ -108,7 +113,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
   const seamBand = !hasSeam
     ? ''
     : `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
-      ` fill-rule="evenodd" fill="#fce7f0" fill-opacity="1" stroke="none" />`;
+      ` fill-rule="evenodd" fill="${SEAM_BAND_FILL}" fill-opacity="1" stroke="none" />`;
 
   const seamLine = !hasSeam
     ? ''
@@ -178,7 +183,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     // WebKit의 0폭 계산도 우연히 비켜 가 있었다. 폭을 직접 못 박아 우연에 기대지 않는다.
     ` style="overflow: visible; width: 100%; max-width: 100%; height: auto;" role="img"`,
     ` aria-label="${escapeXml(`가로 ${round1(w)}mm, 세로 ${round1(h)}mm 전개도 미리보기`)}">`,
-    `<polygon points="${points}" fill="#fffdf5" stroke="#222" stroke-width="${cutStroke}" />`,
+    `<polygon points="${points}" fill="${PATTERN_FILL}" stroke="${CUT_COLOR}" stroke-width="${cutStroke}" />`,
     seamBand,
     seamLine,
     // 페이지 경계는 도안 위에 얹어야 보인다. 도안 채움이 불투명해서
@@ -195,35 +200,54 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
 }
 
 export interface LegendItem {
-  /** style.css의 색 견본 class. */
+  /** style.css의 견본 모양 class. 굵기와 실선·점선만 정하고 색은 담지 않는다. */
   readonly swatch: string;
+  /** 선 색. 도면에 실제로 쓰는 값과 같은 출처에서 나온다. */
+  readonly color: string;
+  /** 면이 있는 견본(시접 띠)의 채움색. */
+  readonly fill?: string;
   readonly text: string;
 }
 
 /**
- * 범례. 실제로 그린 선만 담는다.
+ * 범례. 실제로 그린 선만, 실제로 쓴 색으로 담는다.
  *
- * 예전에는 index.html에 네 줄을 박아 두었는데, 시접과 골선이 선택사항이 되면서
- * 도면에 없는 선이 범례에만 남는 일이 생겼다. 그리지도 않은 선을 적어 두면
- * 도면에서 찾다가 헤맨다.
+ * 예전에는 index.html에 네 줄을 박아 두고 견본 색은 style.css에 따로
+ * 적었다. 도면에 없는 선이 범례에만 남거나, 견본이 도면과 다른 색을
+ * 가리키는 일이 생겼다. 둘 다 손으로 맞춰야 했고 아무도 못 잡았다.
+ *
+ * 이제 그리는 쪽과 같은 상수에서 색을 꺼내 준다. style.css는 굵기와
+ * 실선·점선만 맡고 색은 여기서 온다. 어긋날 자리가 없다.
  */
 export function legendItems(layout: Layout): readonly LegendItem[] {
-  const items: LegendItem[] = [{ swatch: 'swatch-cut', text: '재단선 — 이 선대로 자릅니다' }];
+  const items: LegendItem[] = [
+    { swatch: 'swatch-cut', color: CUT_COLOR, text: '재단선 — 이 선대로 자릅니다' },
+  ];
 
   if (layout.seamMm > 0) {
-    items.push({ swatch: 'swatch-seam', text: '완성선 — 여기를 박습니다' });
+    items.push({ swatch: 'swatch-seam', color: SEAM_COLOR, text: '완성선 — 여기를 박습니다' });
     items.push({
       swatch: 'swatch-seam-band',
+      color: SEAM_COLOR,
+      fill: SEAM_BAND_FILL,
       text: `시접 ${round1(layout.seamMm)}mm — 이미 포함되어 있습니다`,
     });
   }
 
-  items.push({ swatch: 'swatch-center', text: '중앙선 — 도안 폭의 한가운데' });
+  items.push({ swatch: 'swatch-center', color: CENTER_COLOR, text: '중앙선 — 도안 폭의 한가운데' });
 
   if (layout.foldEdgeYMm !== undefined) {
-    items.push({ swatch: 'swatch-fold-edge', text: '골선 — 원단 접은 자리에 놓습니다' });
+    items.push({
+      swatch: 'swatch-fold-edge',
+      color: FOLD_EDGE_COLOR,
+      text: '골선 — 원단 접은 자리에 놓습니다',
+    });
   }
 
-  items.push({ swatch: 'swatch-tile', text: '인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다' });
+  items.push({
+    swatch: 'swatch-tile',
+    color: TILE_COLOR,
+    text: '인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다',
+  });
   return items;
 }
