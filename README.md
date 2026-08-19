@@ -17,14 +17,15 @@ A static web tool that turns finished dimensions into a print-ready, true-to-sca
 
 **Try it → https://choisuing.github.io/pouch-sewing-pattern/**
 
-Enter width, height and depth in millimetres. The tool drafts the flat pattern, adds a 10&nbsp;mm seam allowance, tiles it across A4 or A3 sheets and hands you a PDF to print at 100&nbsp;% scale.
+Enter width, height and depth in millimetres. The tool drafts the flat pattern, tiles it across A4 or A3 sheets and hands you a PDF to print at 100&nbsp;% scale. A 10&nbsp;mm seam allowance is included by default.
 
 **What it does for you**
 
 - **True scale, verified.** A red 3&nbsp;cm square is printed on the first sheet. Measure it with a ruler; if it is 3&nbsp;cm, every other measurement is right.
 - **Multi-sheet assembly.** Neighbouring sheets overlap by 10&nbsp;mm. Cut along the dashed line on the left and top edges, then slide each sheet until the red diamonds line up and tape.
+- **Seam allowance is optional.** On by default. Turn it off and the pattern comes out at finished size, for when you prefer to add the allowance by hand as you cut. The sheet is then labelled `시접없음` (*no seam allowance*) and the file gets a `-noseam` suffix, so a stray printout can never be mistaken for the other kind.
 - **Half-size printing.** The pattern is symmetric about the middle of the base, so you can print only the top half and place the marked fold edge on folded fabric. Roughly halves the number of sheets.
-- **Line legend on every sheet.** Cut line, stitch line, fold line, centre line, fold edge and assembly marks each get their own colour *and* dash pattern, so they never get confused in print.
+- **Legend lists only what was drawn.** Cut line, stitch line, fold line, centre line, fold edge and assembly marks each get their own colour *and* dash pattern. Turn a feature off and its legend entry disappears with it — you never hunt the drawing for a line that isn't there.
 
 **Runs entirely in your browser.** No account, no upload, no server. Your measurements never leave the page. Fonts and icons are bundled, so nothing is fetched from a third party.
 
