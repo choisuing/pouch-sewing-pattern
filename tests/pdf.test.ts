@@ -575,3 +575,26 @@ describe('buildPdf — 중앙선과 패턴명', () => {
     expect(patternTitlePointMm(halveOnFold(layout))).toBeDefined();
   });
 });
+
+describe('buildPdf — 시접 없이 뜬 도안', () => {
+  const noSeam = buildLayout(travel, 0);
+
+  it('시접 표시 문구에 쓰는 글자가 서브셋 폰트 안에 있다', () => {
+    const missing = [...patternTitle(travel, 0)].filter((ch) => !KOREAN_FONT_CHARS.has(ch));
+    expect(missing).toEqual([]);
+  });
+
+  it('완성선을 겹쳐 긋지 않아 콘텐츠가 더 가볍다', async () => {
+    const pagination = paginate(noSeam, 'a4');
+    const withSeam = buildLayout(travel);
+    const a = await buildPdf(noSeam, pagination);
+    const b = await buildPdf(withSeam, paginate(withSeam, 'a4'));
+    expect(a.length).toBeLessThan(b.length);
+  });
+
+  it('시접 없이도 페이지 구성은 정상이다', async () => {
+    const pagination = paginate(noSeam, 'a4');
+    const doc = await PDFDocument.load(await buildPdf(noSeam, pagination));
+    expect(doc.getPageCount()).toBe(pagination.pages.length);
+  });
+});

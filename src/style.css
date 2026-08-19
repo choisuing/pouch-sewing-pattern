@@ -294,6 +294,9 @@ body {
 .swatch-cut { border-top: 2px solid #222; }
 .swatch-seam { border-top: 1px solid #94682f; }
 .swatch-tile { border-top: 2px dashed #2a7387; }
+/* 아래 두 견본도 preview.ts가 그리는 선과 같은 값을 써야 한다. */
+.swatch-center { border-top: 1px dashed #8a8175; }
+.swatch-fold-edge { border-top: 2px solid #b42318; }
 .swatch-seam-band {
   height: 12px;
   border: 1px solid #94682f;

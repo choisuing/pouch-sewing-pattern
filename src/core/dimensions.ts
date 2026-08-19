@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 choisuing
 
-import { DIMENSION_ORDER, FIELD_LABELS, RANGES, type DimensionField } from './constants';
+import { DIMENSION_ORDER, FIELD_LABELS, RANGES, SEAM_MM, type DimensionField } from './constants';
 import { withObjectParticle, withTopicParticle } from './korean';
 
 export interface Dimensions {
@@ -64,10 +64,14 @@ export const PATTERN_NAME = '사각사각 지퍼 파우치';
 /**
  * 도안에 찍을 한 줄. 이름과 치수를 붙인다.
  * 치수 순서는 화면·라벨과 같은 가로*높이*바닥폭이다.
+ *
+ * 시접 없이 뽑았으면 그렇다고 못 박는다. 종이만 따로 돌아다니면 화면을
+ * 볼 수 없고, 모르고 재단하면 원단을 버린다.
  */
-export function patternTitle(dimensions: Dimensions): string {
+export function patternTitle(dimensions: Dimensions, seamMm: number = SEAM_MM): string {
   const { widthMm: W, heightMm: H, depthMm: D } = dimensions;
-  return `${PATTERN_NAME} ${W}*${H}*${D}`;
+  const base = `${PATTERN_NAME} ${W}*${H}*${D}`;
+  return seamMm === 0 ? `${base} 시접없음` : base;
 }
 
 /**
@@ -81,7 +85,11 @@ export function patternFileName(
   dimensions: Dimensions,
   paper: string,
   foldHalf: boolean,
+  seamMm: number = SEAM_MM,
 ): string {
   const { widthMm: W, heightMm: H, depthMm: D } = dimensions;
-  return `box-pouch-${W}x${H}x${D}-${paper}${foldHalf ? '-half' : ''}.pdf`;
+  // 같은 치수를 골선·시접 조합만 바꿔 여러 번 받아 두면 이름이 같아진다.
+  const half = foldHalf ? '-half' : '';
+  const seam = seamMm === 0 ? '-noseam' : '';
+  return `box-pouch-${W}x${H}x${D}-${paper}${half}${seam}.pdf`;
 }

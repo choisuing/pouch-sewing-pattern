@@ -109,11 +109,13 @@ export function setPaperCount(paper: PaperSize, sheets: number | null): void {
 }
 
 /**
- * 골선 체크박스. 켜면 전개도의 위쪽 절반만 내보내 인쇄 장수가 대략 반으로 준다.
- * 원단을 접어 그 변에 대고 재단하면 펼쳤을 때 온전한 한 장이 된다.
+ * 출력 방식 체크박스 하나. 골선접기와 시접 추가가 같은 모양을 쓴다.
+ * 둘 다 "도안을 어떻게 뽑을지" 정하는 것이라 나란히 놓인다.
  */
-export function renderFoldOption(
+function renderCheckbox(
   container: HTMLElement,
+  id: string,
+  labelText: string,
   checked: boolean,
   onChange: (next: boolean) => void,
 ): void {
@@ -124,13 +126,38 @@ export function renderFoldOption(
 
   const box = document.createElement('input');
   box.type = 'checkbox';
-  box.id = 'fold-half';
+  box.id = id;
   box.checked = checked;
   box.addEventListener('change', () => onChange(box.checked));
 
   const text = document.createElement('span');
-  text.textContent = '골선으로 출력하기';
+  text.textContent = labelText;
 
   label.append(box, text);
   container.append(label);
+}
+
+/**
+ * 골선접기. 켜면 전개도의 위쪽 절반만 내보내 인쇄 장수가 대략 반으로 준다.
+ * 원단을 접어 그 변에 대고 재단하면 펼쳤을 때 온전한 한 장이 된다.
+ */
+export function renderFoldOption(
+  container: HTMLElement,
+  checked: boolean,
+  onChange: (next: boolean) => void,
+): void {
+  renderCheckbox(container, 'fold-half', '골선접기', checked, onChange);
+}
+
+/**
+ * 시접 추가. 끄면 완성 치수 그대로 뜬다. 재단하면서 손으로 시접을 더하거나
+ * 완성선을 따라 그릴 도안이 필요할 때 쓴다. 기본은 켜짐 — 무심코 시접 없는
+ * 도안을 뽑아 원단을 버리는 일을 막는다.
+ */
+export function renderSeamOption(
+  container: HTMLElement,
+  checked: boolean,
+  onChange: (next: boolean) => void,
+): void {
+  renderCheckbox(container, 'seam-add', '시접 추가', checked, onChange);
 }

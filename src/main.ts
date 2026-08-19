@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (C) 2026 choisuing
 
-import { PRESETS, type Preset } from './core/constants';
+import { PRESETS, SEAM_MM, type Preset } from './core/constants';
 import { patternFileName, validateDimensions } from './core/dimensions';
 import { buildLayout, halveOnFold } from './core/layout';
 import { paginate, type PaperSize } from './core/tiling';
@@ -9,12 +9,13 @@ import {
   readInputs,
   renderInputs,
   renderFoldOption,
+  renderSeamOption,
   renderPaperOptions,
   renderPresetButtons,
   setPaperCount,
   writeInputs,
 } from './ui/form';
-import { describePagination, renderPreviewSvg } from './ui/preview';
+import { describePagination, legendItems, renderPreviewSvg } from './ui/preview';
 import { renderShapeSvg } from './ui/shape';
 import './style.css';
 
@@ -24,6 +25,8 @@ const presetsEl = document.getElementById('presets')!;
 const inputsEl = document.getElementById('inputs')!;
 const papersEl = document.getElementById('papers')!;
 const foldFieldEl = document.getElementById('fold-field')!;
+const seamFieldEl = document.getElementById('seam-field')!;
+const legendEl = document.getElementById('legend')!;
 const previewEl = document.getElementById('preview')!;
 const shapeEl = document.getElementById('shape')!;
 const summaryEl = document.getElementById('preview-summary')!;
@@ -32,6 +35,8 @@ const downloadBtn = document.getElementById('download') as HTMLButtonElement;
 
 let paper: PaperSize = 'a4';
 let foldHalf = false;
+// 기본은 시접 포함. 무심코 시접 없는 도안을 뽑아 원단을 버리는 일을 막는다.
+let addSeam = true;
 
 function showError(messages: readonly string[]): void {
   if (messages.length === 0) {
@@ -51,6 +56,7 @@ function refresh(): void {
     previewEl.innerHTML = '';
     shapeEl.innerHTML = '';
     summaryEl.textContent = '';
+    legendEl.innerHTML = '';
     downloadBtn.disabled = true;
     setPaperCount('a4', null);
     setPaperCount('a3', null);
@@ -60,7 +66,7 @@ function refresh(): void {
   showError([]);
   shapeEl.innerHTML = renderShapeSvg(result.value);
 
-  const full = buildLayout(result.value);
+  const full = buildLayout(result.value, addSeam ? SEAM_MM : 0);
   const layout = foldHalf ? halveOnFold(full) : full;
 
   // 용지별 장수를 둘 다 보여줘야 해서 어차피 A4·A3을 모두 계산한다.
@@ -72,6 +78,10 @@ function refresh(): void {
   summaryEl.textContent = describePagination(pagination);
   downloadBtn.disabled = false;
 
+  legendEl.innerHTML = legendItems(layout)
+    .map((item) => `<li><span class="swatch ${item.swatch}"></span>${item.text}</li>`)
+    .join('');
+
   setPaperCount('a4', byPaper.a4.pages.length);
   setPaperCount('a3', byPaper.a3.pages.length);
 }
@@ -80,7 +90,7 @@ async function download(): Promise<void> {
   const result = validateDimensions(readInputs());
   if (!result.ok) return;
 
-  const full = buildLayout(result.value);
+  const full = buildLayout(result.value, addSeam ? SEAM_MM : 0);
   const layout = foldHalf ? halveOnFold(full) : full;
   const pagination = paginate(layout, paper);
 
@@ -104,7 +114,7 @@ async function download(): Promise<void> {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = patternFileName(result.value, paper, foldHalf);
+    link.download = patternFileName(result.value, paper, foldHalf, layout.seamMm);
     link.click();
     // click() 직후 바로 거두면 브라우저가 아직 읽는 중일 수 있다. Chrome은
     // 견디지만 표준이 보장하는 동작은 아니다. 다음 차례로 미뤄 둔다.
@@ -121,6 +131,10 @@ renderPresetButtons(presetsEl, (preset: Preset) => {
   refresh();
 });
 renderInputs(inputsEl, refresh);
+renderSeamOption(seamFieldEl, addSeam, (next) => {
+  addSeam = next;
+  refresh();
+});
 renderFoldOption(foldFieldEl, foldHalf, (next) => {
   foldHalf = next;
   refresh();

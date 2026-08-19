@@ -38,6 +38,8 @@ export interface Layout {
   /** 재단선 안쪽으로 시접만큼 들어간 박음질선. */
   readonly seamLineMm: readonly Point[];
   readonly foldLinesMm: readonly Line[];
+  /** 이 도안에 넣은 시접 (mm). 0이면 완성선이 곧 재단선이다. */
+  readonly seamMm: number;
   /**
    * 골선 자리 (mm). 절반만 남긴 전개도에만 있다. 이 변을 원단 접은 자리에
    * 놓고 재단해 펼치면 온전한 한 장이 된다. 접는 자리라 시접이 없다.
@@ -70,9 +72,16 @@ function offsetInward(points: readonly Point[], distanceMm: number): Point[] {
   });
 }
 
-export function buildLayout(dimensions: Dimensions): Layout {
+/**
+ * 전개도를 만든다.
+ *
+ * `seamMm`을 0으로 주면 시접 없이 완성 치수 그대로 뜬다. 재단하면서 손으로
+ * 시접을 더하거나, 완성선을 따라 그릴 도안이 필요할 때 쓴다. 이때 완성선은
+ * 재단선과 같은 자리가 되므로 그리는 쪽에서 겹쳐 긋지 않도록 살펴야 한다.
+ */
+export function buildLayout(dimensions: Dimensions, seamMm: number = SEAM_MM): Layout {
   const { widthMm: W, depthMm: D, heightMm: H } = dimensions;
-  const S = SEAM_MM;
+  const S = seamMm;
   const Z = ZIPPER_ALLOWANCE_MM;
 
   const totalWidthMm = W + H + 2 * S;
@@ -192,8 +201,9 @@ export function buildLayout(dimensions: Dimensions): Layout {
     sideInsetMm,
     bands,
     outlineMm,
-    seamLineMm: offsetInward(outlineMm, S),
+    seamLineMm: S === 0 ? outlineMm : offsetInward(outlineMm, S),
     foldLinesMm,
+    seamMm: S,
   };
 }
 

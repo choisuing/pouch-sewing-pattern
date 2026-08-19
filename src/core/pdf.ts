@@ -8,7 +8,6 @@ import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
-import { SEAM_MM } from './constants';
 import { centerXMm, patternTitlePointMm, type Layout, type Line, type Point } from './layout';
 import { patternTitle } from './dimensions';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
@@ -20,7 +19,7 @@ export const MM_TO_PT = 72 / 25.4;
  * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
  */
 export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
-  " !*0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm각골사선세요우인지치퍼파하확",
+  " !*0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm각골사선세시없요우음인접지치퍼파하확",
 );
 
 /** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
@@ -353,7 +352,7 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
   const point = patternTitlePointMm(layout);
   if (point === undefined) return;
 
-  const text = patternTitle(layout.dimensions);
+  const text = patternTitle(layout.dimensions, layout.seamMm);
   const size = 11;
   const anchor = toPagePoint(pagination, page, point.xMm, point.yMm);
   ctx.pdfPage.drawText(text, {
@@ -555,7 +554,8 @@ export async function buildPdf(layout: Layout, pagination: Pagination): Promise<
     if (page === pagination.pages[0]) drawScaleSquare(pdfPage, pagination, font);
 
     drawPolygon(ctx, layout.outlineMm, 1);
-    drawSeamLine(ctx, layout.seamLineMm);
+    // 시접이 0이면 완성선이 재단선과 같은 자리다. 겹쳐 그으면 선만 두꺼워진다.
+    if (layout.seamMm > 0) drawSeamLine(ctx, layout.seamLineMm);
     // 접힘선은 layout이 완성선 기준으로 계산해 둔다. 밴드 경계로 다시
     // 그리면 시접만큼 밀린 자리에 선이 생긴다.
     for (const line of layout.foldLinesMm) drawFoldLine(ctx, line);

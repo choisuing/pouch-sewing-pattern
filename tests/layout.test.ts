@@ -501,9 +501,81 @@ describe('patternFileName — 내려받는 파일 이름', () => {
     expect(patternFileName(dims, 'a4', true)).toBe('box-pouch-160x80x40-a4-half.pdf');
   });
 
+  it('시접 없이 뽑으면 noseam을 붙인다', () => {
+    // 같은 치수를 시접 있이·없이 받아 두면 이름이 같아 구분할 수 없다.
+    expect(patternFileName(dims, 'a4', false, 0)).toBe('box-pouch-160x80x40-a4-noseam.pdf');
+    expect(patternFileName(dims, 'a4', true, 0)).toBe('box-pouch-160x80x40-a4-half-noseam.pdf');
+  });
+
+  it('시접이 있으면 이름이 지금까지와 같다', () => {
+    expect(patternFileName(dims, 'a4', false, SEAM_MM)).toBe(patternFileName(dims, 'a4', false));
+  });
+
   it('파일 이름에 쓸 수 없는 글자가 없다', () => {
     for (const half of [true, false]) {
       expect(patternFileName(dims, 'a4', half)).toMatch(/^[a-z0-9x.-]+$/);
     }
+  });
+});
+
+describe('buildLayout — 시접 없이 뜨기', () => {
+  const dims: Dimensions = { widthMm: 270, depthMm: 100, heightMm: 140 };
+  const withSeam = buildLayout(dims);
+  const noSeam = buildLayout(dims, 0);
+
+  it('기본값은 지금까지처럼 시접을 넣는다', () => {
+    expect(withSeam.seamMm).toBe(SEAM_MM);
+    expect(noSeam.seamMm).toBe(0);
+  });
+
+  it('시접을 빼면 도안이 시접 두 겹만큼 작아진다', () => {
+    expect(withSeam.totalWidthMm - noSeam.totalWidthMm).toBeCloseTo(2 * SEAM_MM, 9);
+    expect(noSeam.totalWidthMm).toBeCloseTo(dims.widthMm + dims.heightMm, 9);
+  });
+
+  it('앞판이 완성 치수 그대로가 된다', () => {
+    const front = noSeam.bands.find((b) => b.id === 'front')!;
+    expect(front.widthMm).toBeCloseTo(dims.widthMm, 9);
+    expect(front.heightMm).toBeCloseTo(dims.heightMm, 9);
+  });
+
+  it('완성선이 재단선과 같아진다', () => {
+    expect(noSeam.seamLineMm).toHaveLength(noSeam.outlineMm.length);
+    for (let i = 0; i < noSeam.outlineMm.length; i++) {
+      expect(noSeam.seamLineMm[i]!.xMm).toBeCloseTo(noSeam.outlineMm[i]!.xMm, 9);
+      expect(noSeam.seamLineMm[i]!.yMm).toBeCloseTo(noSeam.outlineMm[i]!.yMm, 9);
+    }
+  });
+
+  it('접힘선이 도안 맨 가장자리에서 시작한다', () => {
+    // 시접이 있으면 위쪽 시접 S부터 쌓지만, 없으면 0부터다.
+    const ys = noSeam.foldLinesMm.filter((f) => f.y1Mm === f.y2Mm).map((f) => f.y1Mm).sort((a, b) => a - b);
+    const vertical = noSeam.foldLinesMm.filter((f) => f.x1Mm === f.x2Mm);
+    expect(Math.min(...vertical.map((f) => Math.min(f.y1Mm, f.y2Mm)))).toBeCloseTo(0, 9);
+    expect(ys[0]).toBeCloseTo(dims.depthMm / 2 - 5, 9);
+  });
+
+  it('접힘선이 여전히 완성선을 덮지 않는다', () => {
+    // 시접이 0이면 완성선이 곧 재단선이다. 그 위에 접힘선이 얹히면 안 된다.
+    expect(overlapWithSeamLineMm(noSeam)).toBe(0);
+  });
+
+  it('골선으로 절반만 남기는 것도 그대로 된다', () => {
+    const half = halveOnFold(noSeam);
+    expect(half.totalHeightMm).toBeCloseTo(noSeam.totalHeightMm / 2, 9);
+    expect(half.seamMm).toBe(0);
+  });
+});
+
+describe('patternTitle — 시접 표시', () => {
+  const dims: Dimensions = { widthMm: 160, heightMm: 80, depthMm: 40 };
+
+  it('시접이 있으면 치수만 적는다', () => {
+    expect(patternTitle(dims, SEAM_MM)).toBe('사각사각 지퍼 파우치 160*80*40');
+  });
+
+  it('시접이 없으면 그렇다고 못 박는다', () => {
+    // 종이만 따로 돌아다니면 화면을 볼 수 없다. 모르고 재단하면 원단을 버린다.
+    expect(patternTitle(dims, 0)).toBe('사각사각 지퍼 파우치 160*80*40 시접없음');
   });
 });

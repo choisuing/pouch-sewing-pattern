@@ -97,17 +97,37 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     )
     .join('');
 
+  /*
+   * 시접이 0이면 완성선이 곧 재단선이다. 같은 자리에 두 번 그으면 선만
+   * 두꺼워 보이고, 그 사이를 칠하면 아무것도 칠해지지 않는다. 아예 건너뛴다.
+   */
+  const hasSeam = layout.seamMm > 0;
+
   // 재단선과 완성선을 두 개의 닫힌 경로로 묶고 evenodd로 채우면
   // 두 선 사이(=시접)만 칠해진다.
-  const seamBand =
-    `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
-    ` fill-rule="evenodd" fill="#fce7f0" fill-opacity="1" stroke="none" />`;
+  const seamBand = !hasSeam
+    ? ''
+    : `<path class="seam-band" d="${toClosedPath(layout.outlineMm)} ${toClosedPath(layout.seamLineMm)}"` +
+      ` fill-rule="evenodd" fill="#fce7f0" fill-opacity="1" stroke="none" />`;
 
-  const seamLine = `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" />`;
+  const seamLine = !hasSeam
+    ? ''
+    : `<polygon class="seam-line" points="${toPolygonPoints(layout.seamLineMm)}" fill="none" stroke="${SEAM_COLOR}" stroke-width="${thinStroke}" />`;
+
+  /*
+   * 세로 중앙선. 앞판·바닥의 가로 한가운데라 원단에 올릴 때 기준이 된다.
+   * 선 종류가 이미 여럿이라 제도에서 중심선에 쓰는 일점쇄선으로 긋는다.
+   * 모양만으로 갈리므로 색은 눈에 띄지 않는 회색이면 된다.
+   */
+  const centerLine =
+    `<line class="center-line" x1="${round1(centerXMm(layout))}" y1="0"` +
+    ` x2="${round1(centerXMm(layout))}" y2="${round1(h)}"` +
+    ` stroke="${CENTER_COLOR}" stroke-width="${thinStroke}"` +
+    ` stroke-dasharray="${dash(0.026, 0.012)} ${dash(0.004, 0.012)}" />`;
 
   /*
    * 골선. 절반만 남긴 전개도의 아래 변이다. 이 변은 자르는 선이 아니라
-   * 원단 접은 자리에 얹는 선이라, 재단선과 헷갈리지 않게 따로 긋고 글자로 짚는다.
+   * 원단 접은 자리에 얹는 선이라, 재단선과 헷갈리지 않게 따로 긋는다.
    */
   const foldEdge = (() => {
     const yMm = layout.foldEdgeYMm;
@@ -130,17 +150,6 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
   })();
 
   /*
-   * 세로 중앙선. 앞판·바닥의 가로 한가운데라 원단에 올릴 때 기준이 된다.
-   * 선 종류가 이미 여럿이라 제도에서 중심선에 쓰는 일점쇄선으로 긋는다.
-   * 모양만으로 갈리므로 색은 눈에 띄지 않는 회색이면 된다.
-   */
-  const centerLine =
-    `<line class="center-line" x1="${round1(centerXMm(layout))}" y1="0"` +
-    ` x2="${round1(centerXMm(layout))}" y2="${round1(h)}"` +
-    ` stroke="${CENTER_COLOR}" stroke-width="${thinStroke}"` +
-    ` stroke-dasharray="${dash(0.026, 0.012)} ${dash(0.004, 0.012)}" />`;
-
-  /*
    * 도안 이름과 치수. 앞판 한가운데가 가장 넓게 비어 있다.
    * 미리보기에는 밴드 이름이 이미 그 자리에 있어 한 줄 아래로 내린다.
    */
@@ -150,7 +159,7 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
       ? ''
       : `<text class="pattern-title" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 1.6)}"` +
         ` text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#666">` +
-        `${escapeXml(patternTitle(layout.dimensions))}</text>`;
+        `${escapeXml(patternTitle(layout.dimensions, layout.seamMm))}</text>`;
 
   const labels = layout.bands
     .map(
@@ -183,4 +192,38 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
     dims,
     `</svg>`,
   ].join('');
+}
+
+export interface LegendItem {
+  /** style.css의 색 견본 class. */
+  readonly swatch: string;
+  readonly text: string;
+}
+
+/**
+ * 범례. 실제로 그린 선만 담는다.
+ *
+ * 예전에는 index.html에 네 줄을 박아 두었는데, 시접과 골선이 선택사항이 되면서
+ * 도면에 없는 선이 범례에만 남는 일이 생겼다. 그리지도 않은 선을 적어 두면
+ * 도면에서 찾다가 헤맨다.
+ */
+export function legendItems(layout: Layout): readonly LegendItem[] {
+  const items: LegendItem[] = [{ swatch: 'swatch-cut', text: '재단선 — 이 선대로 자릅니다' }];
+
+  if (layout.seamMm > 0) {
+    items.push({ swatch: 'swatch-seam', text: '완성선 — 여기를 박습니다' });
+    items.push({
+      swatch: 'swatch-seam-band',
+      text: `시접 ${round1(layout.seamMm)}mm — 이미 포함되어 있습니다`,
+    });
+  }
+
+  items.push({ swatch: 'swatch-center', text: '중앙선 — 도안 폭의 한가운데' });
+
+  if (layout.foldEdgeYMm !== undefined) {
+    items.push({ swatch: 'swatch-fold-edge', text: '골선 — 원단 접은 자리에 놓습니다' });
+  }
+
+  items.push({ swatch: 'swatch-tile', text: '인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다' });
+  return items;
 }

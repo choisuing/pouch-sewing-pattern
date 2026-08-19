@@ -56,6 +56,7 @@
               <span class="paper-label">용지</span>
               <div class="papers" id="papers"></div>
             </div>
+            <div class="fold-field" id="seam-field"></div>
             <div class="fold-field" id="fold-field"></div>
             <div class="download-field">
               <button type="button" id="download" class="download">PDF 다운로드</button>
@@ -64,12 +65,7 @@
           </div>
         </div>
         <div class="preview" id="preview"></div>
-        <ul class="legend">
-          <li><span class="swatch swatch-cut"></span>재단선 — 이 선대로 자릅니다</li>
-          <li><span class="swatch swatch-seam"></span>완성선 — 여기를 박습니다</li>
-          <li><span class="swatch swatch-seam-band"></span>시접 10mm — 이미 포함되어 있습니다</li>
-          <li><span class="swatch swatch-tile"></span>인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다</li>
-        </ul>
+        <ul class="legend" id="legend"></ul>
       </section>
     </main>
     <script type="module" src="/src/main.ts"></script>

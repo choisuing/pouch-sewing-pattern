@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold } from '../src/core/layout';
 import { patternTitle } from '../src/core/dimensions';
 import { paginate } from '../src/core/tiling';
-import { renderPreviewSvg, escapeXml, describePagination } from '../src/ui/preview';
+import { renderPreviewSvg, escapeXml, describePagination, legendItems } from '../src/ui/preview';
 
 const layout = buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 });
 const pagination = paginate(layout, 'a4');
@@ -256,5 +256,72 @@ describe('renderPreviewSvg — 중앙선과 패턴명', () => {
     expect(Math.abs(titleY - bandY)).toBeGreaterThan(1);
     expect(titleY).toBeGreaterThan(front.yMm);
     expect(titleY).toBeLessThan(front.yMm + front.heightMm);
+  });
+});
+
+describe('renderPreviewSvg — 시접 없이 뜬 도안', () => {
+  const dims = { widthMm: 270, depthMm: 100, heightMm: 140 };
+  const noSeam = buildLayout(dims, 0);
+  const noSeamSvg = renderPreviewSvg(noSeam, paginate(noSeam, 'a4'));
+
+  it('완성선을 겹쳐 긋지 않는다', () => {
+    // 재단선과 같은 자리라 두 번 그으면 인쇄물에서 선만 두꺼워진다.
+    expect(noSeamSvg).not.toContain('class="seam-line"');
+    expect(svg).toContain('class="seam-line"');
+  });
+
+  it('시접 띠도 칠하지 않는다', () => {
+    expect(noSeamSvg).not.toContain('class="seam-band"');
+    expect(svg).toContain('class="seam-band"');
+  });
+
+  it('재단선과 나머지 표시는 그대로 있다', () => {
+    expect(noSeamSvg).toContain('class="center-line"');
+    expect(noSeamSvg).toContain('class="pattern-title"');
+    expect(noSeamSvg).toMatch(/<polygon points=/);
+  });
+
+  it('도안 이름에 시접없음이 붙는다', () => {
+    expect(noSeamSvg).toContain('시접없음');
+    expect(svg).not.toContain('시접없음');
+  });
+});
+
+describe('legendItems — 범례는 실제로 그린 선만 알려준다', () => {
+  it('시접이 있으면 다섯 줄이다', () => {
+    const items = legendItems(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }));
+    expect(items.map((i) => i.text)).toEqual([
+      '재단선 — 이 선대로 자릅니다',
+      '완성선 — 여기를 박습니다',
+      '시접 10mm — 이미 포함되어 있습니다',
+      '중앙선 — 도안 폭의 한가운데',
+      '인쇄 페이지 경계 — 칸 번호는 PDF와 같습니다',
+    ]);
+  });
+
+  it('시접이 없으면 완성선과 시접 줄이 빠진다', () => {
+    // 그리지도 않은 선을 범례에 두면 도면에서 찾다가 헤맨다.
+    const items = legendItems(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }, 0));
+    const texts = items.map((i) => i.text);
+    expect(texts).not.toContain('완성선 — 여기를 박습니다');
+    expect(texts.some((t) => t.startsWith('시접'))).toBe(false);
+    expect(texts).toContain('재단선 — 이 선대로 자릅니다');
+  });
+
+  it('골선으로 뽑으면 골선 줄이 붙는다', () => {
+    const half = halveOnFold(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }));
+    expect(legendItems(half).some((i) => i.text.startsWith('골선'))).toBe(true);
+    expect(legendItems(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 })).some((i) => i.text.startsWith('골선'))).toBe(false);
+  });
+
+  it('시접 줄에 실제로 쓴 값을 적는다', () => {
+    const items = legendItems(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }));
+    expect(items.find((i) => i.text.startsWith('시접'))!.text).toContain('10mm');
+  });
+
+  it('모든 줄에 색 견본 class가 붙는다', () => {
+    for (const item of legendItems(buildLayout({ widthMm: 270, depthMm: 100, heightMm: 140 }, 0))) {
+      expect(item.swatch).toMatch(/^swatch-/);
+    }
   });
 });
