@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold } from '../src/core/layout';
-import { patternTitle } from '../src/core/dimensions';
+import { patternTitle, WATERMARK } from '../src/core/dimensions';
 import { paginate } from '../src/core/tiling';
 import { renderPreviewSvg, escapeXml, describePagination, legendItems } from '../src/ui/preview';
 
@@ -369,5 +369,30 @@ describe('범례 색이 도면에 실제로 쓰인 색이다', () => {
   it('선만 있는 견본은 채움색이 없다', () => {
     const cut = legendItems(cases[0]!.layout).find((i) => i.text.startsWith('재단선'))!;
     expect(cut.fill).toBeUndefined();
+  });
+});
+
+describe('renderPreviewSvg — 워터마크', () => {
+  it('도안 이름 아래에 출처를 적는다', () => {
+    expect(svg).toContain('class="watermark"');
+    expect(svg).toContain(WATERMARK);
+  });
+
+  it('도안 이름보다 아래에 놓인다', () => {
+    const title = Number(svg.match(/class="pattern-title"[^>]*y="([\d.-]+)"/)![1]);
+    const mark = Number(svg.match(/class="watermark"[^>]*y="([\d.-]+)"/)![1]);
+    expect(mark).toBeGreaterThan(title);
+  });
+
+  it('앞판 안에 머문다', () => {
+    const front = layout.bands.find((b) => b.id === 'front')!;
+    const mark = Number(svg.match(/class="watermark"[^>]*y="([\d.-]+)"/)![1]);
+    expect(mark).toBeGreaterThan(front.yMm);
+    expect(mark).toBeLessThan(front.yMm + front.heightMm);
+  });
+
+  it('도안 이름보다 작고 옅게 쓴다', () => {
+    const size = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*font-size="([\\d.]+)"`))![1]);
+    expect(size('watermark')).toBeLessThan(size('pattern-title'));
   });
 });

@@ -3,7 +3,7 @@
 
 import { centerXMm, patternTitlePointMm, type Layout, type Point } from '../core/layout';
 import type { Pagination } from '../core/tiling';
-import { patternTitle } from '../core/dimensions';
+import { patternTitle, WATERMARK } from '../core/dimensions';
 
 export function escapeXml(value: string): string {
   return value
@@ -164,7 +164,11 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
       ? ''
       : `<text class="pattern-title" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 1.6)}"` +
         ` text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#666">` +
-        `${escapeXml(patternTitle(layout.dimensions, layout.seamMm))}</text>`;
+        `${escapeXml(patternTitle(layout.dimensions, layout.seamMm))}</text>` +
+        // 출처는 이름보다 한 급 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+        `<text class="watermark" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 2.9)}"` +
+        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 0.8)}" fill="#9a9a9a">` +
+        `${escapeXml(WATERMARK)}</text>`;
 
   const labels = layout.bands
     .map(

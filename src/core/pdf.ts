@@ -9,7 +9,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
 import { centerXMm, patternTitlePointMm, type Layout, type Line, type Point } from './layout';
-import { patternTitle } from './dimensions';
+import { patternTitle, WATERMARK } from './dimensions';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
 export const MM_TO_PT = 72 / 25.4;
@@ -19,7 +19,7 @@ export const MM_TO_PT = 72 / 25.4;
  * 없는 글자를 쓰면 그 자리가 비어 나오므로, 테스트로 미리 막는다.
  */
 export const KOREAN_FONT_CHARS: ReadonlySet<string> = new Set(
-  " !*0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZcm각골사선세시없요우음인접지치퍼파하확",
+  " !*@_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcilmnsu각게골들만보사선세시쁘없어예요우음인접지치퍼파하확",
 );
 
 /** 브라우저와 Node 양쪽에서 도는 base64 디코더. */
@@ -195,6 +195,8 @@ const SCALE_COLOR = rgb(0.85, 0.1, 0.1);
 const JOIN_DIAMOND_COLOR = rgb(0.85, 0.1, 0.1);
 /** 골선. 재단선으로 오인하면 안 되는 선이라 빨강으로 굵게 긋는다. */
 const FOLD_EDGE_COLOR = rgb(0.7, 0.1, 0.1);
+/** 출처 문구. 도면을 읽는 데 방해되지 않도록 옅게. */
+const WATERMARK_COLOR = rgb(0.6, 0.6, 0.6);
 /** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
 const CENTER_COLOR = rgb(0.5, 0.48, 0.44);
 
@@ -361,6 +363,17 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     size,
     font,
     color: MARK_COLOR,
+  });
+
+  // 출처는 이름 아래 한 급 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+  const markSize = 8;
+  const markAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 6);
+  ctx.pdfPage.drawText(WATERMARK, {
+    x: markAnchor.x - font.widthOfTextAtSize(WATERMARK, markSize) / 2,
+    y: markAnchor.y,
+    size: markSize,
+    font,
+    color: WATERMARK_COLOR,
   });
 }
 

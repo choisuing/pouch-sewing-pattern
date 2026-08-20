@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
-import { patternTitle, patternFileName } from '../src/core/dimensions';
+import { patternTitle, patternFileName, WATERMARK } from '../src/core/dimensions';
 import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
@@ -577,5 +577,19 @@ describe('patternTitle — 시접 표시', () => {
   it('시접이 없으면 그렇다고 못 박는다', () => {
     // 종이만 따로 돌아다니면 화면을 볼 수 없다. 모르고 재단하면 원단을 버린다.
     expect(patternTitle(dims, 0)).toBe('사각사각 지퍼 파우치 160*80*40 시접없음');
+  });
+});
+
+describe('WATERMARK — 도안에 남기는 출처', () => {
+  it('문구가 정해진 대로다', () => {
+    expect(WATERMARK).toBe('예쁘게 만들어보세요! @silsuni_lab');
+  });
+
+  it('도안 이름과는 별개다', () => {
+    // 이름은 치수가 바뀌면 따라 바뀌지만 출처는 늘 같다.
+    const a = patternTitle({ widthMm: 160, heightMm: 80, depthMm: 40 });
+    const b = patternTitle({ widthMm: 270, heightMm: 140, depthMm: 100 });
+    expect(a).not.toBe(b);
+    expect(WATERMARK).not.toContain('*');
   });
 });

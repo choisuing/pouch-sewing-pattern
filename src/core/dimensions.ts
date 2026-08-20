@@ -58,6 +58,12 @@ export function validateDimensions(input: Record<DimensionField, unknown>): Vali
   return { ok: true, value: { widthMm, depthMm, heightMm } };
 }
 
+/**
+ * 도안에 남기는 출처. 종이만 따로 돌아다녀도 어디서 나왔는지 알 수 있다.
+ * 이 문구를 바꾸면 서브셋 폰트를 다시 만들어야 한다 — README의 "PDF 한글 폰트" 참고.
+ */
+export const WATERMARK = '예쁘게 만들어보세요! @silsuni_lab';
+
 /** 도안에 찍는 이름. 화면 제목과 같은 말을 쓴다. */
 export const PATTERN_NAME = '사각사각 지퍼 파우치';
 

@@ -4,7 +4,7 @@ import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { KOREAN_BOLD_FONT_BASE64 } from '../src/core/korean-font';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
-import { patternTitle } from '../src/core/dimensions';
+import { patternTitle, WATERMARK } from '../src/core/dimensions';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
 import {
   MM_TO_PT,
@@ -641,5 +641,17 @@ describe('서브셋 폰트가 선언한 글자를 실제로 담고 있다', () =
     const declared = new Set([...KOREAN_FONT_CHARS].map((ch) => ch.codePointAt(0)!));
     const extra = [...have].filter((cp) => cp !== NON_CHARACTER && !declared.has(cp));
     expect(extra.map((cp) => String.fromCodePoint(cp))).toEqual([]);
+  });
+});
+
+describe('buildPdf — 워터마크', () => {
+  it('워터마크 글자가 모두 서브셋 폰트 안에 있다', () => {
+    expect([...WATERMARK].filter((ch) => !KOREAN_FONT_CHARS.has(ch))).toEqual([]);
+  });
+
+  it('글꼴 바이너리에도 실제로 들어 있다', () => {
+    const font = fontkit.create(Buffer.from(KOREAN_FONT_BASE64, 'base64')) as { characterSet: number[] };
+    const have = new Set(font.characterSet);
+    expect([...WATERMARK].filter((ch) => !have.has(ch.codePointAt(0)!))).toEqual([]);
   });
 });
