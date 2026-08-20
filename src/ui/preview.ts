@@ -3,7 +3,7 @@
 
 import { centerXMm, patternTitlePointMm, type Layout, type Point } from '../core/layout';
 import type { Pagination } from '../core/tiling';
-import { patternTitle, WATERMARK } from '../core/dimensions';
+import { patternTitle, WATERMARK_HANDLE, WATERMARK_MESSAGE } from '../core/dimensions';
 
 export function escapeXml(value: string): string {
   return value
@@ -165,10 +165,14 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
       : `<text class="pattern-title" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 1.6)}"` +
         ` text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#666">` +
         `${escapeXml(patternTitle(layout.dimensions, layout.seamMm))}</text>` +
-        // 출처는 이름보다 한 급 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+        // 권유 한 줄은 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
         `<text class="watermark" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 2.9)}"` +
         ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 0.8)}" fill="#9a9a9a">` +
-        `${escapeXml(WATERMARK)}</text>`;
+        `${escapeXml(WATERMARK_MESSAGE)}</text>` +
+        // 계정은 이름보다도 크게. 여기가 강조하고 싶은 자리다.
+        `<text class="watermark-handle" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 4.6)}"` +
+        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 1.35)}" fill="#555555">` +
+        `${escapeXml(WATERMARK_HANDLE)}</text>`;
 
   const labels = layout.bands
     .map(

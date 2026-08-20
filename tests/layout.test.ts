@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
-import { patternTitle, patternFileName, WATERMARK } from '../src/core/dimensions';
+import { patternTitle, patternFileName, WATERMARK_MESSAGE, WATERMARK_HANDLE } from '../src/core/dimensions';
 import { RANGES, SEAM_MM } from '../src/core/constants';
 import type { Dimensions } from '../src/core/dimensions';
 
@@ -580,9 +580,16 @@ describe('patternTitle — 시접 표시', () => {
   });
 });
 
-describe('WATERMARK — 도안에 남기는 출처', () => {
-  it('문구가 정해진 대로다', () => {
-    expect(WATERMARK).toBe('예쁘게 만들어보세요! @silsuni_lab');
+describe('출처 문구 — 두 줄로 나뉜다', () => {
+  it('권유와 계정이 각각의 줄이다', () => {
+    expect(WATERMARK_MESSAGE).toBe('예쁘게 만들어보세요!');
+    expect(WATERMARK_HANDLE).toBe('@silsuni_lab');
+  });
+
+  it('한 줄에 섞어 두지 않는다', () => {
+    // 계정을 키워 강조하려면 별개의 글자 요소여야 한다.
+    expect(WATERMARK_MESSAGE).not.toContain('@');
+    expect(WATERMARK_HANDLE).not.toContain(' ');
   });
 
   it('도안 이름과는 별개다', () => {
@@ -590,6 +597,6 @@ describe('WATERMARK — 도안에 남기는 출처', () => {
     const a = patternTitle({ widthMm: 160, heightMm: 80, depthMm: 40 });
     const b = patternTitle({ widthMm: 270, heightMm: 140, depthMm: 100 });
     expect(a).not.toBe(b);
-    expect(WATERMARK).not.toContain('*');
+    expect(WATERMARK_HANDLE).not.toContain('*');
   });
 });

@@ -9,7 +9,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
 import { centerXMm, patternTitlePointMm, type Layout, type Line, type Point } from './layout';
-import { patternTitle, WATERMARK } from './dimensions';
+import { patternTitle, WATERMARK_HANDLE, WATERMARK_MESSAGE } from './dimensions';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
 export const MM_TO_PT = 72 / 25.4;
@@ -365,15 +365,26 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     color: MARK_COLOR,
   });
 
-  // 출처는 이름 아래 한 급 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
-  const markSize = 8;
-  const markAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 6);
-  ctx.pdfPage.drawText(WATERMARK, {
-    x: markAnchor.x - font.widthOfTextAtSize(WATERMARK, markSize) / 2,
-    y: markAnchor.y,
-    size: markSize,
+  // 권유 한 줄은 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+  const messageSize = 8;
+  const messageAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 6);
+  ctx.pdfPage.drawText(WATERMARK_MESSAGE, {
+    x: messageAnchor.x - font.widthOfTextAtSize(WATERMARK_MESSAGE, messageSize) / 2,
+    y: messageAnchor.y,
+    size: messageSize,
     font,
     color: WATERMARK_COLOR,
+  });
+
+  // 계정은 이름보다도 크게. 여기가 강조하고 싶은 자리다.
+  const handleSize = 15;
+  const handleAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 14);
+  ctx.pdfPage.drawText(WATERMARK_HANDLE, {
+    x: handleAnchor.x - font.widthOfTextAtSize(WATERMARK_HANDLE, handleSize) / 2,
+    y: handleAnchor.y,
+    size: handleSize,
+    font,
+    color: MARK_COLOR,
   });
 }
 

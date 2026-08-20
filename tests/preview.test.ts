@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold } from '../src/core/layout';
-import { patternTitle, WATERMARK } from '../src/core/dimensions';
+import { patternTitle, WATERMARK_MESSAGE, WATERMARK_HANDLE } from '../src/core/dimensions';
 import { paginate } from '../src/core/tiling';
 import { renderPreviewSvg, escapeXml, describePagination, legendItems } from '../src/ui/preview';
 
@@ -372,27 +372,36 @@ describe('범례 색이 도면에 실제로 쓰인 색이다', () => {
   });
 });
 
-describe('renderPreviewSvg — 워터마크', () => {
-  it('도안 이름 아래에 출처를 적는다', () => {
+describe('renderPreviewSvg — 출처 두 줄', () => {
+  const sizeOf = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*font-size="([\\d.]+)"`))![1]);
+  const yOf = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*y="([\\d.-]+)"`))![1]);
+
+  it('권유와 계정을 각각의 글자로 그린다', () => {
     expect(svg).toContain('class="watermark"');
-    expect(svg).toContain(WATERMARK);
+    expect(svg).toContain('class="watermark-handle"');
+    expect(svg).toContain(WATERMARK_MESSAGE);
+    expect(svg).toContain(WATERMARK_HANDLE);
   });
 
-  it('도안 이름보다 아래에 놓인다', () => {
-    const title = Number(svg.match(/class="pattern-title"[^>]*y="([\d.-]+)"/)![1]);
-    const mark = Number(svg.match(/class="watermark"[^>]*y="([\d.-]+)"/)![1]);
-    expect(mark).toBeGreaterThan(title);
+  it('계정이 권유보다 크다', () => {
+    // 강조하려고 키운 것이라 이게 뒤집히면 의도가 사라진다.
+    expect(sizeOf('watermark-handle')).toBeGreaterThan(sizeOf('watermark'));
   });
 
-  it('앞판 안에 머문다', () => {
+  it('계정이 도안 이름보다도 크다', () => {
+    expect(sizeOf('watermark-handle')).toBeGreaterThan(sizeOf('pattern-title'));
+  });
+
+  it('이름 → 권유 → 계정 순으로 아래에 놓인다', () => {
+    expect(yOf('watermark')).toBeGreaterThan(yOf('pattern-title'));
+    expect(yOf('watermark-handle')).toBeGreaterThan(yOf('watermark'));
+  });
+
+  it('셋 다 앞판 안에 머문다', () => {
     const front = layout.bands.find((b) => b.id === 'front')!;
-    const mark = Number(svg.match(/class="watermark"[^>]*y="([\d.-]+)"/)![1]);
-    expect(mark).toBeGreaterThan(front.yMm);
-    expect(mark).toBeLessThan(front.yMm + front.heightMm);
-  });
-
-  it('도안 이름보다 작고 옅게 쓴다', () => {
-    const size = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*font-size="([\\d.]+)"`))![1]);
-    expect(size('watermark')).toBeLessThan(size('pattern-title'));
+    for (const cls of ['pattern-title', 'watermark', 'watermark-handle']) {
+      expect(yOf(cls)).toBeGreaterThan(front.yMm);
+      expect(yOf(cls)).toBeLessThan(front.yMm + front.heightMm);
+    }
   });
 });
