@@ -108,6 +108,13 @@ body {
   max-width: 60ch;
 }
 
+/* 만든 이. 설명문과 같은 크기로 두면 문장의 일부처럼 읽힌다. */
+.made-by {
+  margin: var(--space-3) 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* 섹션 제목 — 아이콘과 글자를 한 줄에 */
 .section {
   display: flex;
