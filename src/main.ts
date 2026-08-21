@@ -14,10 +14,12 @@ import {
   renderPresetButtons,
   setPaperCount,
   writeInputs,
+  writeInputValues,
 } from './ui/form';
 import { describePagination, legendItems, renderPreviewSvg } from './ui/preview';
 import { renderShapeSvg } from './ui/shape';
 import { trackDownload } from './track';
+import { isStaleChunkError, keepState, takeState } from './stale';
 import './style.css';
 
 const PAGE_WARN_THRESHOLD = 20;
@@ -34,10 +36,16 @@ const summaryEl = document.getElementById('preview-summary')!;
 const errorEl = document.getElementById('error')!;
 const downloadBtn = document.getElementById('download') as HTMLButtonElement;
 
-let paper: PaperSize = 'a4';
-let foldHalf = false;
+/*
+ * 배포가 지나가 스스로 다시 부른 화면이면 맡겨 둔 상태가 남아 있다.
+ * 선언보다 먼저 꺼내야 아래 초기값과 첫 그리기가 한 번에 맞는다.
+ */
+const kept = takeState();
+
+let paper: PaperSize = kept?.paper ?? 'a4';
+let foldHalf = kept?.foldHalf ?? false;
 // 기본은 시접 포함. 무심코 시접 없는 도안을 뽑아 원단을 버리는 일을 막는다.
-let addSeam = true;
+let addSeam = kept?.addSeam ?? true;
 
 function showError(messages: readonly string[]): void {
   if (messages.length === 0) {
@@ -94,6 +102,19 @@ function refresh(): void {
   setPaperCount('a3', byPaper.a3.pages.length);
 }
 
+/** 새로 부르기 전에 맡길 화면 상태. 사람이 고르고 친 것만 모은다. */
+function currentState() {
+  const values = readInputs();
+  return {
+    widthMm: String(values.widthMm ?? ''),
+    heightMm: String(values.heightMm ?? ''),
+    depthMm: String(values.depthMm ?? ''),
+    paper,
+    addSeam,
+    foldHalf,
+  };
+}
+
 async function download(): Promise<void> {
   const result = validateDimensions(readInputs());
   if (!result.ok) return;
@@ -137,6 +158,18 @@ async function download(): Promise<void> {
       foldHalf,
     });
   } catch (error) {
+    /*
+     * 배포가 지나가 PDF 조각을 못 찾는 경우다. 화면을 새로 부르면 새 이름을
+     * 부르게 되어 저절로 낫는다. 치던 치수는 맡겼다가 되돌려준다.
+     *
+     * keepState가 거절하면 이미 한 번 다시 불러 본 뒤다. 또 부르면 끝없이
+     * 도는 화면이 되므로, 그때는 아래로 내려가 오류를 보여 준다.
+     */
+    if (isStaleChunkError(error) && keepState(currentState())) {
+      showError(['새 버전이 올라왔습니다. 화면을 다시 불러옵니다…']);
+      location.reload();
+      return;
+    }
     showError([`PDF를 만들지 못했습니다: ${error instanceof Error ? error.message : String(error)}`]);
   } finally {
     downloadBtn.disabled = false;
@@ -162,6 +195,7 @@ renderPaperOptions(papersEl, paper, (next) => {
 });
 downloadBtn.addEventListener('click', () => void download());
 
-// 첫 화면은 첫 번째 프리셋으로 채운다.
-writeInputs(PRESETS[0]!);
+// 첫 화면은 첫 번째 프리셋으로 채운다. 되살린 화면이면 치던 값을 되돌린다.
+if (kept === undefined) writeInputs(PRESETS[0]!);
+else writeInputValues(kept);
 refresh();

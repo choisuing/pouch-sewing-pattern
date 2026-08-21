@@ -97,9 +97,18 @@ export function readInputs(): Record<DimensionField, unknown> {
 }
 
 export function writeInputs(preset: Preset): void {
+  writeInputValues(preset);
+}
+
+/**
+ * 세 칸에 값을 그대로 써 넣는다. 프리셋은 숫자를 주지만 되살린 화면은
+ * 사람이 치던 글자를 그대로 준다 — 숫자로 바꿔 버리면 지우다 만 빈칸이
+ * 0이 되어 화면에 없던 값이 생긴다.
+ */
+export function writeInputValues(values: Record<DimensionField, string | number>): void {
   for (const field of DIMENSION_ORDER) {
     const input = document.getElementById(`field-${field}`) as HTMLInputElement | null;
-    if (input) input.value = String(preset[field]);
+    if (input) input.value = String(values[field]);
   }
 }
 
