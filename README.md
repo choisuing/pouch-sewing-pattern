@@ -2,7 +2,7 @@
 
 완성 치수(가로·높이·바닥폭)를 입력하면 지퍼 사각 파우치의 전개도를 1:1 실치수 PDF로 만들어주는 정적 웹 도구.
 
-**바로 쓰기 → https://choisuing.github.io/pouch-sewing-pattern/**
+**바로 쓰기 → https://silsuni-lab.github.io/**
 
 ![화면](docs/img/screenshot.jpg)
 
@@ -15,7 +15,7 @@
 
 A static web tool that turns finished dimensions into a print-ready, true-to-scale PDF sewing pattern for a boxy zipper pouch.
 
-**Try it → https://choisuing.github.io/pouch-sewing-pattern/**
+**Try it → https://silsuni-lab.github.io/**
 
 Enter width, height and depth in millimetres. The tool drafts the flat pattern, tiles it across A4 or A3 sheets and hands you a PDF to print at 100&nbsp;% scale. A 10&nbsp;mm seam allowance is included by default.
 
