@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, halveOnFold } from '../src/core/layout';
-import { patternTitle, WATERMARK_MESSAGE, WATERMARK_HANDLE } from '../src/core/dimensions';
+import {
+  patternTitle,
+  WATERMARK_MESSAGE,
+  WATERMARK_HANDLE,
+  WATERMARK_OPACITY,
+} from '../src/core/dimensions';
 import { paginate } from '../src/core/tiling';
 import { renderPreviewSvg, escapeXml, describePagination, legendItems } from '../src/ui/preview';
 
@@ -374,7 +379,9 @@ describe('범례 색이 도면에 실제로 쓰인 색이다', () => {
 
 describe('renderPreviewSvg — 출처 두 줄', () => {
   const sizeOf = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*font-size="([\\d.]+)"`))![1]);
-  const yOf = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*y="([\\d.-]+)"`))![1]);
+  // `y="`를 그냥 찾으면 뒤에 붙은 fill-opacity="…"의 `y="`가 걸린다.
+  // 속성 앞 빈칸까지 넣어 진짜 y만 집는다.
+  const yOf = (cls: string) => Number(svg.match(new RegExp(`class="${cls}"[^>]*\\sy="([\\d.-]+)"`))![1]);
 
   it('권유와 계정을 각각의 글자로 그린다', () => {
     expect(svg).toContain('class="watermark"');
@@ -395,6 +402,14 @@ describe('renderPreviewSvg — 출처 두 줄', () => {
   it('이름 → 권유 → 계정 순으로 아래에 놓인다', () => {
     expect(yOf('watermark')).toBeGreaterThan(yOf('pattern-title'));
     expect(yOf('watermark-handle')).toBeGreaterThan(yOf('watermark'));
+  });
+
+  it('두 줄 다 절반만 진하게 찍는다', () => {
+    // 도면 위 글자가 재단선만큼 진해 보이지 않게 한 결정이다.
+    // 이 값이 되돌아가면 출처가 다시 선만큼 진해진다.
+    for (const cls of ['watermark', 'watermark-handle']) {
+      expect(svg).toMatch(new RegExp(`class="${cls}"[^>]*fill-opacity="${WATERMARK_OPACITY}"`));
+    }
   });
 
   it('셋 다 앞판 안에 머문다', () => {

@@ -69,6 +69,15 @@ export function validateDimensions(input: Record<DimensionField, unknown>): Vali
 export const WATERMARK_MESSAGE = '예쁘게 만들어보세요!';
 export const WATERMARK_HANDLE = '@silsuni_lab';
 
+/*
+ * 출처 두 줄을 찍는 진하기. 도면 위에 얹힌 글자가 재단선만큼 진해 보이면
+ * 도면을 읽을 때 눈이 먼저 그리로 간다. 계정은 크기로 눈에 띄게 하고,
+ * 진하기는 두 줄 모두 반만 남긴다.
+ *
+ * 미리보기와 PDF가 같은 값을 써야 화면에서 본 대로 종이에 나온다.
+ */
+export const WATERMARK_OPACITY = 0.5;
+
 /** 도안에 찍는 이름. 화면 제목과 같은 말을 쓴다. */
 export const PATTERN_NAME = '사각사각 지퍼 파우치';
 

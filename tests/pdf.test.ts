@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { inflateSync } from 'node:zlib';
-import { PDFArray, PDFDocument, PDFRawStream } from 'pdf-lib';
+import { PDFArray, PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { KOREAN_BOLD_FONT_BASE64 } from '../src/core/korean-font';
 import { buildLayout, halveOnFold, patternTitlePointMm, centerXMm } from '../src/core/layout';
-import { patternTitle, WATERMARK_MESSAGE, WATERMARK_HANDLE } from '../src/core/dimensions';
+import {
+  patternTitle,
+  WATERMARK_MESSAGE,
+  WATERMARK_HANDLE,
+  WATERMARK_OPACITY,
+} from '../src/core/dimensions';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
 import {
   MM_TO_PT,
@@ -653,5 +658,14 @@ describe('buildPdf — 워터마크', () => {
     const font = fontkit.create(Buffer.from(KOREAN_FONT_BASE64, 'base64')) as { characterSet: number[] };
     const have = new Set(font.characterSet);
     expect([...WATERMARK_MESSAGE + WATERMARK_HANDLE].filter((ch) => !have.has(ch.codePointAt(0)!))).toEqual([]);
+  });
+
+  it('출처 두 줄을 절반만 진하게 찍는다', async () => {
+    // 미리보기 SVG와 같은 값이라야 화면에서 본 대로 종이에 나온다.
+    // 두 줄이 같은 값을 쓰므로 ExtGState는 하나로 묶여 나온다.
+    const layout = buildLayout({ widthMm: 150, heightMm: 90, depthMm: 50 });
+    const doc = await PDFDocument.load(await buildPdf(layout, paginate(layout, 'a4')));
+    const states = doc.getPages()[0]!.node.Resources()!.lookup(PDFName.of('ExtGState'))!.toString();
+    expect(states).toContain(`/ca ${WATERMARK_OPACITY}`);
   });
 });

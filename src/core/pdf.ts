@@ -9,7 +9,12 @@ import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { KOREAN_BOLD_FONT_BASE64, KOREAN_FONT_BASE64 } from './korean-font';
 export { KOREAN_FONT_BASE64 };
 import { centerXMm, patternTitlePointMm, type Layout, type Line, type Point } from './layout';
-import { patternTitle, WATERMARK_HANDLE, WATERMARK_MESSAGE } from './dimensions';
+import {
+  patternTitle,
+  WATERMARK_HANDLE,
+  WATERMARK_OPACITY,
+  WATERMARK_MESSAGE,
+} from './dimensions';
 import { PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Pagination, type Page } from './tiling';
 
 export const MM_TO_PT = 72 / 25.4;
@@ -374,6 +379,7 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     size: messageSize,
     font,
     color: WATERMARK_COLOR,
+    opacity: WATERMARK_OPACITY,
   });
 
   // 계정은 이름보다도 크게. 여기가 강조하고 싶은 자리다.
@@ -385,6 +391,7 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     size: handleSize,
     font,
     color: MARK_COLOR,
+    opacity: WATERMARK_OPACITY,
   });
 }
 
