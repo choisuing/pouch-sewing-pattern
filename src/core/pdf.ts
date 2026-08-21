@@ -201,7 +201,6 @@ const JOIN_DIAMOND_COLOR = rgb(0.85, 0.1, 0.1);
 /** 골선. 재단선으로 오인하면 안 되는 선이라 빨강으로 굵게 긋는다. */
 const FOLD_EDGE_COLOR = rgb(0.7, 0.1, 0.1);
 /** 출처 문구. 도면을 읽는 데 방해되지 않도록 옅게. */
-const WATERMARK_COLOR = rgb(0.6, 0.6, 0.6);
 /** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
 const CENTER_COLOR = rgb(0.5, 0.48, 0.44);
 
@@ -370,7 +369,8 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     color: MARK_COLOR,
   });
 
-  // 권유 한 줄은 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+  // 권유 한 줄은 계정보다 작게. 옅어 보이는 일은 색이 아니라
+  // 투명도가 맡는다 — 색까지 옅으면 인쇄에서 사라진다.
   const messageSize = 8;
   const messageAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 6);
   ctx.pdfPage.drawText(WATERMARK_MESSAGE, {
@@ -378,7 +378,7 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
     y: messageAnchor.y,
     size: messageSize,
     font,
-    color: WATERMARK_COLOR,
+    color: MARK_COLOR,
     opacity: WATERMARK_OPACITY,
   });
 

@@ -36,6 +36,13 @@ const FOLD_EDGE_COLOR = '#b42318';
 const CENTER_COLOR = '#8a8175';
 /** 재단선. 도안에서 가장 굵고 진한 선이다. */
 const CUT_COLOR = '#222222';
+/*
+ * 출처 두 줄의 글자색. 진하기를 반으로 낮춰 두었으므로(WATERMARK_OPACITY)
+ * 바탕색까지 옅게 잡으면 옅은 잉크로 뽑을 때 종이에서 사라진다. 물러나
+ * 보이는 일은 투명도가 맡고, 색은 인쇄에서 살아남을 만큼 진하게 둔다.
+ */
+const WATERMARK_COLOR = '#555555';
+
 /** 도안 안쪽 채움과 시접 띠 채움. */
 const PATTERN_FILL = '#fffdf5';
 const SEAM_BAND_FILL = '#fce7f0';
@@ -170,14 +177,15 @@ export function renderPreviewSvg(layout: Layout, pagination: Pagination): string
       : `<text class="pattern-title" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 1.6)}"` +
         ` text-anchor="middle" dominant-baseline="middle" font-size="${bandLabelSize}" fill="#666">` +
         `${escapeXml(patternTitle(layout.dimensions, layout.seamMm))}</text>` +
-        // 권유 한 줄은 작고 옅게. 도면을 읽는 데 방해가 되면 안 된다.
+        // 권유 한 줄은 계정보다 작게. 옅어 보이는 일은 색이 아니라
+        // 투명도가 맡는다 — 색까지 옅으면 인쇄에서 사라진다.
         `<text class="watermark" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 2.9)}"` +
-        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 0.8)}" fill="#9a9a9a"` +
+        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 0.8)}" fill="${WATERMARK_COLOR}"` +
         ` fill-opacity="${WATERMARK_OPACITY}">` +
         `${escapeXml(WATERMARK_MESSAGE)}</text>` +
         // 계정은 이름보다도 크게. 여기가 강조하고 싶은 자리다.
         `<text class="watermark-handle" x="${round1(titlePoint.xMm)}" y="${round1(titlePoint.yMm + bandLabelSize * 4.6)}"` +
-        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 1.35)}" fill="#555555"` +
+        ` text-anchor="middle" dominant-baseline="middle" font-size="${round1(bandLabelSize * 1.35)}" fill="${WATERMARK_COLOR}"` +
         ` fill-opacity="${WATERMARK_OPACITY}">` +
         `${escapeXml(WATERMARK_HANDLE)}</text>`;
 
