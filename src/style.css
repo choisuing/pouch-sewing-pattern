@@ -179,7 +179,12 @@ body {
 .inputs { display: grid; gap: var(--space-3); }
 .input-row {
   display: grid;
-  grid-template-columns: 60px minmax(0, 200px) auto;
+  /*
+   * 입력칸 폭은 들어갈 값에 맞춘다. 세 자리(최대 400)에 알약 좌우 여백을
+   * 더해도 100px이면 넉넉하다. 200px일 때는 빈칸이 절반이라 숫자 몇 개
+   * 넣는 자리치고 과해 보였다.
+   */
+  grid-template-columns: 60px minmax(0, 100px) auto;
   justify-content: start;
   gap: var(--space-3);
   align-items: center;
