@@ -39,7 +39,12 @@ jobs:
       # 깨진 걸 올리지 않도록 테스트를 먼저 돌린다.
       # build 스크립트가 tsc --noEmit을 함께 돌리므로 타입 검사도 여기서 걸린다.
       - run: npm test
+
+      # 다운로드 기록을 받을 주소. 저장소 Secret에 TRACK_URL이 없으면 빈 값이
+      # 들어가고, 그러면 트래킹은 통째로 잠잔다 — docs/tracking.md 참고.
       - run: npm run build
+        env:
+          VITE_TRACK_URL: ${{ secrets.TRACK_URL }}
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

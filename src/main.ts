@@ -17,6 +17,7 @@ import {
 } from './ui/form';
 import { describePagination, legendItems, renderPreviewSvg } from './ui/preview';
 import { renderShapeSvg } from './ui/shape';
+import { trackDownload } from './track';
 import './style.css';
 
 const PAGE_WARN_THRESHOLD = 20;
@@ -126,6 +127,15 @@ async function download(): Promise<void> {
     // click() 직후 바로 거두면 브라우저가 아직 읽는 중일 수 있다. Chrome은
     // 견디지만 표준이 보장하는 동작은 아니다. 다음 차례로 미뤄 둔다.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // 파일이 실제로 나간 뒤에만 센다. 만들다 실패한 시도까지 세면
+    // "몇 명이 받았나"가 아니라 "몇 번 눌렀나"가 된다.
+    trackDownload({
+      ...result.value,
+      paper,
+      seamMm: layout.seamMm,
+      foldHalf,
+    });
   } catch (error) {
     showError([`PDF를 만들지 못했습니다: ${error instanceof Error ? error.message : String(error)}`]);
   } finally {
