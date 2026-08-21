@@ -210,6 +210,39 @@ sips -Z 800 -s format jpeg -s formatOptions 70 원본.jpg --out src/assets/pouch
 
 `<img>`의 `width`·`height` 속성도 새 크기로 함께 고친다. 비워 두면 사진이 늦게 뜰 때 글이 아래로 밀린다.
 
+## README 스크린샷
+
+`docs/img/screenshot.jpg` — 문서 맨 위에 놓이는 화면 사진. 955×1400, JPEG 품질 70이다.
+
+**화면을 고치면 이 그림이 같이 낡는다.** 색이나 문구나 모서리를 손댄 커밋에는 새로 찍은 그림이 함께 있어야 한다. 며칠 뒤에 알아채면 그 사이에 저장소를 본 사람들은 없는 화면을 본 셈이 된다.
+
+크기를 955×1400으로 못 박는 이유는 문서가 흔들리지 않게 하려는 것이다. 찍을 때마다 크기가 달라지면 README를 열 때 그림이 자리를 잡는 모습이 매번 바뀐다.
+
+macOS라면 도구를 따로 깔지 않아도 된다. Chrome을 화면 없이 돌려 찍고 `sips`로 줄인다.
+
+```bash
+# 1. 다른 터미널에서 개발 서버를 띄워 둔다 (보통 http://localhost:5173/)
+npm run dev
+
+# 2. 화면 없이 찍는다. 포트는 위에서 나온 주소에 맞춘다.
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --disable-gpu --hide-scrollbars \
+  --force-device-scale-factor=2 --window-size=955,1400 \
+  --virtual-time-budget=4000 \
+  --screenshot=shot.png http://localhost:5173/
+
+# 3. 절반으로 줄이고 JPEG으로 바꾼다 (-z는 높이·너비 순서다)
+sips -z 1400 955 shot.png --out shot-955.png
+sips -s format jpeg -s formatOptions 70 shot-955.png --out docs/img/screenshot.jpg
+rm shot.png shot-955.png
+```
+
+두 배 크기로 찍어 절반으로 줄이는 건 글자를 또렷하게 만들려는 것이다. 처음부터 955로 찍으면 작은 글씨가 뭉갠 것처럼 나온다.
+
+`--hide-scrollbars`를 빼면 오른쪽에 스크롤 막대가 같이 찍힌다. `--virtual-time-budget`은 머리말 사진과 첫 도안이 다 그려질 때까지 기다리는 시간이다.
+
+2번에서 `task_policy_set` 어쩌고 하는 빨간 줄이 나와도 그림은 제대로 나온다. macOS에서 Chrome을 화면 없이 돌릴 때 늘 나오는 잔소리다.
+
 ## 라이선스
 
 코드는 [MIT](LICENSE). 마음대로 쓰고 고치고 배포해도 된다.
