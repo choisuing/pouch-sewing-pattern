@@ -121,7 +121,11 @@ body {
  */
 .made-by {
   margin: var(--space-3) 0 0;
-  color: var(--text);
+  /*
+   * 본문 색(--text)이 아니라 순수 검정이다. 여기만 유일하게 다른 검정을
+   * 쓰는데, 화면에서 가장 진한 한 줄이 되라고 일부러 고른 값이다.
+   */
+  color: #000;
   font-size: 15px;
 }
 
