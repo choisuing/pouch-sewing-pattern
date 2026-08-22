@@ -11,6 +11,7 @@ import {
   WATERMARK_OPACITY,
 } from '../src/core/dimensions';
 import { paginate, PAGE_MARGIN_MM, PAGE_OVERLAP_MM, type Page, type Pagination } from '../src/core/tiling';
+import { RANGES, SEAM_MM } from '../src/core/constants';
 import {
   MM_TO_PT,
   SCALE_SQUARE_MM,
@@ -24,6 +25,9 @@ import {
   PATTERN_NOTE,
   patternNotePointMm,
   SCALE_SQUARE_LABEL,
+  titleScale,
+  TITLE_SCALE_MAX,
+  TITLE_MARGIN_MM,
   scaleSquareRectMm,
   gridLabelPointMm,
   joinMarksFor,
@@ -646,6 +650,44 @@ describe('서브셋 폰트가 선언한 글자를 실제로 담고 있다', () =
     const declared = new Set([...KOREAN_FONT_CHARS].map((ch) => ch.codePointAt(0)!));
     const extra = [...have].filter((cp) => cp !== NON_CHARACTER && !declared.has(cp));
     expect(extra.map((cp) => String.fromCodePoint(cp))).toEqual([]);
+  });
+});
+
+describe('titleScale — 문구는 앞판 안에 머문다', () => {
+  // 실제 글꼴로 잰 값에 가깝다. 정확한 값이 아니라 규칙을 지키는지 본다.
+  const block = 20.3;
+
+  it('자리가 넉넉하면 키우고 싶은 만큼 키운다', () => {
+    // 높이 90(앞판 70), 120(앞판 100) 같은 보통 크기가 여기 든다.
+    expect(titleScale(70, block)).toBe(TITLE_SCALE_MAX);
+    expect(titleScale(100, block)).toBe(TITLE_SCALE_MAX);
+    expect(titleScale(280, block)).toBe(TITLE_SCALE_MAX);
+  });
+
+  it('낮은 파우치에서는 자리만큼만 키운다', () => {
+    /*
+     * 필통(높이 50)의 앞판은 30mm뿐이다. 무조건 키우면 문구가 바닥 밴드로
+     * 넘어가 재단선을 읽는 데 방해가 된다.
+     */
+    const scale = titleScale(30, block);
+    expect(scale).toBeGreaterThan(1);
+    expect(scale).toBeLessThan(TITLE_SCALE_MAX);
+    expect(block * scale).toBeLessThanOrEqual(30 - 2 * TITLE_MARGIN_MM);
+  });
+
+  it('예전보다 작아지지는 않는다', () => {
+    // 자리가 없다고 줄여 버리면 고친 게 아니라 망가뜨린 것이 된다.
+    expect(titleScale(10, block)).toBe(1);
+    expect(titleScale(0, block)).toBe(1);
+  });
+
+  it('허용 범위의 모든 높이에서 앞판을 넘지 않는다', () => {
+    for (let heightMm = RANGES.heightMm.min; heightMm <= RANGES.heightMm.max; heightMm += 1) {
+      const frontMm = heightMm - 2 * SEAM_MM;
+      const scale = titleScale(frontMm, block);
+      // 배율 1에서도 안 들어가는 아주 낮은 파우치는 예전과 같게 둔다.
+      if (scale > 1) expect(block * scale).toBeLessThanOrEqual(frontMm);
+    }
   });
 });
 

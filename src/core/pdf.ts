@@ -204,6 +204,42 @@ const FOLD_EDGE_COLOR = rgb(0.7, 0.1, 0.1);
 /** 세로 중앙선. 제도에서 중심선에 쓰는 일점쇄선으로 긋는다. */
 const CENTER_COLOR = rgb(0.5, 0.48, 0.44);
 
+/*
+ * 도안에 찍는 세 줄의 바탕 크기(pt)와 줄 간격(mm). 여기에 배율을 곱해 쓴다.
+ * 셋의 비율이 위계를 만든다 — 계정이 이름보다, 이름이 권유보다 크다.
+ */
+const TITLE_SIZE = 11;
+const MESSAGE_SIZE = 8;
+const HANDLE_SIZE = 15;
+const MESSAGE_OFFSET_MM = 6;
+const HANDLE_OFFSET_MM = 14;
+
+/*
+ * 키우고 싶은 만큼. 종이만 따로 돌아다닐 때 멀리서도 계정이 읽히려면
+ * 이 정도는 되어야 한다.
+ */
+export const TITLE_SCALE_MAX = 2.25;
+
+/** 문구와 앞판 경계 사이에 남길 여백 (mm). */
+export const TITLE_MARGIN_MM = 1.5;
+
+/**
+ * 앞판 높이가 허락하는 배율.
+ *
+ * 문구는 앞판 한가운데 들어가는데 앞판 높이는 `높이 - 2*시접`이라, 낮은
+ * 파우치에서는 자리가 얼마 없다. 필통(높이 50)이면 30mm뿐이다. 무조건
+ * 키우면 문구가 앞판을 넘어 바닥 밴드를 침범하고, 그러면 재단선을 읽는 데
+ * 방해가 된다.
+ *
+ * 1보다 작아지지는 않는다. 자리가 없다고 예전보다 작게 찍으면 지금 쓰던
+ * 사람에게는 고친 게 아니라 망가뜨린 것이 된다.
+ */
+export function titleScale(frontHeightMm: number, blockMm: number): number {
+  if (blockMm <= 0) return 1;
+  const room = frontHeightMm - 2 * TITLE_MARGIN_MM;
+  return Math.min(TITLE_SCALE_MAX, Math.max(1, room / blockMm));
+}
+
 interface PageContext {
   readonly pdfPage: PDFPage;
   readonly pagination: Pagination;
@@ -358,41 +394,44 @@ function drawCenterAndTitle(ctx: PageContext, layout: Layout, font: PDFFont) {
   const point = patternTitlePointMm(layout);
   if (point === undefined) return;
 
-  const text = patternTitle(layout.dimensions, layout.seamMm);
-  const size = 11;
-  const anchor = toPagePoint(pagination, page, point.xMm, point.yMm);
-  ctx.pdfPage.drawText(text, {
-    x: anchor.x - font.widthOfTextAtSize(text, size) / 2,
-    y: anchor.y,
-    size,
-    font,
-    color: MARK_COLOR,
-  });
+  const front = layout.bands.find((band) => band.id === 'front');
+  if (front === undefined) return;
 
+  const text = patternTitle(layout.dimensions, layout.seamMm);
+
+  /*
+   * 세 줄을 한 덩어리로 보고 앞판 안에 눕힌다. 위아래로 얼마를 차지하는지
+   * 실제 글꼴에서 재야 배율을 안전하게 고를 수 있다. heightAtSize는 위아래를
+   * 합친 값이라, 이름 위쪽과 계정 아래쪽에 각각 절반씩 잡아 둔다.
+   */
+  const aboveMm = font.heightAtSize(TITLE_SIZE) / MM_TO_PT / 2;
+  const belowMm = HANDLE_OFFSET_MM + font.heightAtSize(HANDLE_SIZE) / MM_TO_PT / 2;
+  const scale = titleScale(front.heightMm, aboveMm + belowMm);
+
+  /*
+   * 덩어리를 앞판 한가운데에 맞춘다. 예전처럼 이름을 한가운데 두고 아래로
+   * 늘어뜨리면 아래쪽만 좁아져, 키울 수 있는 폭이 절반으로 줄어든다.
+   */
+  const titleYMm = point.yMm - ((aboveMm + belowMm) * scale) / 2 + aboveMm * scale;
+
+  const draw = (value: string, size: number, yMm: number, opacity?: number) => {
+    const anchor = toPagePoint(pagination, page, point.xMm, yMm);
+    ctx.pdfPage.drawText(value, {
+      x: anchor.x - font.widthOfTextAtSize(value, size) / 2,
+      y: anchor.y,
+      size,
+      font,
+      color: MARK_COLOR,
+      ...(opacity === undefined ? {} : { opacity }),
+    });
+  };
+
+  draw(text, TITLE_SIZE * scale, titleYMm);
   // 권유 한 줄은 계정보다 작게. 옅어 보이는 일은 색이 아니라
   // 투명도가 맡는다 — 색까지 옅으면 인쇄에서 사라진다.
-  const messageSize = 8;
-  const messageAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 6);
-  ctx.pdfPage.drawText(WATERMARK_MESSAGE, {
-    x: messageAnchor.x - font.widthOfTextAtSize(WATERMARK_MESSAGE, messageSize) / 2,
-    y: messageAnchor.y,
-    size: messageSize,
-    font,
-    color: MARK_COLOR,
-    opacity: WATERMARK_OPACITY,
-  });
-
+  draw(WATERMARK_MESSAGE, MESSAGE_SIZE * scale, titleYMm + MESSAGE_OFFSET_MM * scale, WATERMARK_OPACITY);
   // 계정은 이름보다도 크게. 여기가 강조하고 싶은 자리다.
-  const handleSize = 15;
-  const handleAnchor = toPagePoint(pagination, page, point.xMm, point.yMm + 14);
-  ctx.pdfPage.drawText(WATERMARK_HANDLE, {
-    x: handleAnchor.x - font.widthOfTextAtSize(WATERMARK_HANDLE, handleSize) / 2,
-    y: handleAnchor.y,
-    size: handleSize,
-    font,
-    color: MARK_COLOR,
-    opacity: WATERMARK_OPACITY,
-  });
+  draw(WATERMARK_HANDLE, HANDLE_SIZE * scale, titleYMm + HANDLE_OFFSET_MM * scale, WATERMARK_OPACITY);
 }
 
 function drawAlignmentMarks(ctx: PageContext, font: PDFFont) {
